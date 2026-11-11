@@ -1,3 +1,5 @@
+### Para Windows
+
 @echo off
 REM VisioVetor — setup + execução local (Windows)
 REM Defina SKIP_FINETUNE=1 para pular o fine-tuning.

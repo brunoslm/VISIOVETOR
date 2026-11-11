@@ -1,3 +1,5 @@
+### Para Linux
+
 #!/usr/bin/env bash
 # VisioVetor — setup + execução local (Linux/macOS)
 # Variáveis opcionais: SKIP_FINETUNE=1 para pular o fine-tuning.
