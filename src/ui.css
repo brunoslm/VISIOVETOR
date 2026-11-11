@@ -1,0 +1,212 @@
+/* VisioVetor — design moderno (zinc + sky, Inter, claro/escuro) adaptado ao Gradio */
+
+:root {
+  --vv-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --vv-ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --vv-text: #18181b;
+  --vv-muted: #71717a;
+  --vv-border: rgba(228, 228, 231, .8);
+  --vv-ring: rgba(9, 9, 11, .06);
+  --vv-card: #ffffff;
+  --vv-soft: #f4f4f5;
+  --vv-sky: #0ea5e9; --vv-violet: #8b5cf6; --vv-teal: #14b8a6; --vv-amber: #f59e0b;
+}
+.dark {
+  --vv-text: #fafafa;
+  --vv-muted: #a1a1aa;
+  --vv-border: #27272a;
+  --vv-ring: rgba(255, 255, 255, .1);
+  --vv-card: #18181b;
+  --vv-soft: #27272a;
+}
+
+/* ---------- base ---------- */
+.gradio-container {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 0 16px 32px !important;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+@media (min-width: 640px) { .gradio-container { padding: 0 24px 40px !important; } }
+footer:not(.vv-footer) { display: none !important; }
+.vv-sem-transicao, .vv-sem-transicao * { transition: none !important; }
+:focus-visible { outline: 2px solid currentColor !important; outline-offset: 2px; }
+.vv-muted { color: var(--vv-muted); }
+.vv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.vv-icon { width: 16px; height: 16px; flex: none; }
+
+/* bolinhas de cor com função */
+.vv-dot { display: inline-block; width: 6px; height: 6px; border-radius: 9999px; flex: none; }
+.vv-sky { background: var(--vv-sky); } .vv-violet { background: var(--vv-violet); }
+.vv-teal { background: var(--vv-teal); } .vv-amber { background: var(--vv-amber); } .vv-zinc { background: #a1a1aa; }
+
+/* ---------- hero ---------- */
+.vv-hero { padding: 8px 0 8px; color: var(--vv-text); }
+.vv-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px; margin-bottom: 32px; border-bottom: 1px solid var(--vv-border);
+}
+.vv-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; font-size: 16px; }
+.vv-logo {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px;
+  background: #0284c7; color: #fff; box-shadow: 0 1px 2px rgba(2, 132, 199, .3);
+}
+.dark .vv-logo { background: #0ea5e9; }
+.vv-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 500; color: var(--vv-muted); }
+.vv-hero h1 {
+  margin: 12px 0 0; max-width: 28ch; font-size: 30px; line-height: 1.15; font-weight: 600;
+  letter-spacing: -.025em; text-wrap: balance; color: var(--vv-text);
+}
+@media (min-width: 640px) { .vv-hero h1 { font-size: 44px; } }
+.vv-lead { margin: 16px 0 0; max-width: 60ch; font-size: 15px; line-height: 1.75; color: var(--vv-muted); text-wrap: pretty; }
+
+.vv-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 32px 0 8px; }
+@media (min-width: 768px) { .vv-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.vv-stat { padding: 14px 16px; border-radius: 16px; background: var(--vv-card); box-shadow: 0 0 0 1px var(--vv-ring), 0 1px 2px rgba(9,9,11,.04); }
+.dark .vv-stat { box-shadow: 0 0 0 1px var(--vv-ring); }
+.vv-stat dt { font-size: 12px; color: var(--vv-muted); }
+.vv-stat dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--vv-text); }
+.vv-stat:first-child dd { color: #0369a1; }
+.dark .vv-stat:first-child dd { color: #7dd3fc; }
+
+/* seletor de tema: pílula segmentada */
+.vv-theme { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9999px; background: var(--vv-soft); }
+.vv-seg { position: relative; display: grid; place-items: center; width: 30px; height: 26px; border-radius: 9999px; color: var(--vv-muted); cursor: pointer; transition: color .15s, background .15s; }
+.vv-seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.vv-seg:hover { color: var(--vv-text); }
+.vv-seg:has(input:checked) { background: var(--vv-card); color: var(--vv-text); box-shadow: 0 1px 2px rgba(9,9,11,.08); }
+.dark .vv-seg:has(input:checked) { background: #3f3f46; box-shadow: none; }
+.vv-seg:has(input:focus-visible) { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* ---------- barra do modelo ---------- */
+.vv-toolbar { margin-top: 8px !important; }
+
+/* ---------- abas em pílula ----------
+   O Gradio mede a barra para decidir quantas abas cabem: a barra fica com a
+   largura toda e o estilo de pílula vai em cada aba (inclusive na cópia oculta
+   usada para medir, para a conta bater). */
+.vv-tabs { margin-top: 16px; }
+.vv-tabs .tab-wrapper { padding-bottom: 12px; border-bottom: 1px solid var(--vv-border); }
+.vv-tabs .tab-container { gap: 4px !important; border: 0 !important; height: auto !important; }
+.vv-tabs .tab-container button {
+  flex: none; height: 34px; margin: 0 !important; border: 0 !important; border-radius: 9999px !important;
+  padding: 0 14px !important; font-size: 14px !important; font-weight: 500 !important; white-space: nowrap;
+}
+.vv-tabs [role="tab"] { color: var(--vv-muted) !important; background: transparent !important; transition: color .15s, background .15s; }
+.vv-tabs [role="tab"]:hover { color: var(--vv-text) !important; background: var(--vv-soft) !important; }
+.vv-tabs [role="tab"][aria-selected="true"] { color: var(--vv-text) !important; background: var(--vv-soft) !important; }
+.dark .vv-tabs [role="tab"][aria-selected="true"] { background: #3f3f46 !important; }
+.vv-tabs [role="tab"]::after { display: none !important; }
+.vv-tabs .overflow-menu button { border-radius: 9999px !important; }
+.vv-tabs [role="tabpanel"] { padding: 20px 0 0 !important; border: 0 !important; }
+
+/* ---------- cabeçalho de seção ---------- */
+.vv-section { margin: 0 0 4px; color: var(--vv-text); }
+.vv-section h2 { margin: 8px 0 0; font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+.vv-desc { margin: 6px 0 0; max-width: 65ch; font-size: 15px; line-height: 1.7; color: var(--vv-muted); text-wrap: pretty; }
+
+/* ---------- chips de exemplo ---------- */
+.vv-chips { gap: 8px !important; flex-wrap: wrap !important; }
+.vv-chips > * { flex: none !important; min-width: 0 !important; }
+.vv-chip {
+  min-height: 0 !important; height: 30px; padding: 0 12px !important; font-size: 13px !important;
+  border-radius: 9999px !important; box-shadow: none !important;
+}
+.vv-chip:active, button.primary:active, button.secondary:active { transform: scale(.97); }
+
+/* ---------- galeria em cards ---------- */
+.vv-gallery { border-radius: 16px !important; }
+.vv-gallery .thumbnail-item {
+  border-radius: 12px !important; overflow: hidden; box-shadow: 0 0 0 1px var(--vv-ring) !important;
+  transition: transform .2s ease-out, box-shadow .2s ease-out !important;
+}
+.vv-gallery .thumbnail-item:hover {
+  transform: translateY(-2px); box-shadow: 0 0 0 1px var(--vv-ring), 0 12px 24px -12px rgba(9,9,11,.25) !important;
+}
+.vv-gallery .thumbnail-item img { transition: transform .5s var(--vv-ease-spring) !important; }
+.vv-gallery .thumbnail-item:hover img { transform: scale(1.05); }
+.vv-gallery .caption-label {
+  left: 8px !important; right: 8px !important; bottom: 8px !important; max-width: none !important;
+  padding: 6px 8px !important; border-radius: 8px !important; font-size: 12px !important; line-height: 1.35 !important;
+  white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  background: rgba(9,9,11,.72) !important; color: #fff !important; backdrop-filter: blur(6px);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- selos ---------- */
+.vv-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 9999px;
+  font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.vv-badge-teal { background: #f0fdfa; color: #0f766e; box-shadow: inset 0 0 0 1px rgba(13,148,136,.15); }
+.dark .vv-badge-teal { background: rgba(20,184,166,.1); color: #5eead4; box-shadow: inset 0 0 0 1px rgba(45,212,191,.2); }
+
+/* ---------- métricas ---------- */
+.vv-metrics-card { color: var(--vv-text); }
+.vv-metrics-meta { margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: var(--vv-muted); }
+.vv-metrics-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .vv-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .vv-metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.vv-metric { padding: 16px; border-radius: 16px; background: var(--vv-card); box-shadow: 0 0 0 1px var(--vv-ring), 0 1px 2px rgba(9,9,11,.04); }
+.dark .vv-metric { box-shadow: 0 0 0 1px var(--vv-ring); }
+.vv-metric-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; font-weight: 500; }
+.vv-bar-row { display: grid; grid-template-columns: 64px 1fr 52px; align-items: center; gap: 10px; margin-top: 6px; font-size: 12px; }
+.vv-bar-label { color: var(--vv-muted); }
+.vv-num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+.vv-bar { appearance: none; -webkit-appearance: none; width: 100%; height: 8px; border: 0; border-radius: 9999px; overflow: hidden; background: var(--vv-soft); }
+.vv-bar::-webkit-progress-bar { background: var(--vv-soft); border-radius: 9999px; }
+.vv-bar::-webkit-progress-value { border-radius: 9999px; transition: width .4s var(--vv-ease-spring); }
+.vv-bar-base::-webkit-progress-value { background: #a1a1aa; }
+.vv-bar-ft::-webkit-progress-value { background: #0284c7; }
+.vv-bar-base::-moz-progress-bar { background: #a1a1aa; border-radius: 9999px; }
+.vv-bar-ft::-moz-progress-bar { background: #0284c7; border-radius: 9999px; }
+.dark .vv-bar-base::-webkit-progress-value { background: #52525b; }
+.dark .vv-bar-ft::-webkit-progress-value { background: #38bdf8; }
+.dark .vv-bar-base::-moz-progress-bar { background: #52525b; }
+.dark .vv-bar-ft::-moz-progress-bar { background: #38bdf8; }
+
+/* ---------- estado vazio ---------- */
+.vv-empty { padding: 32px; border-radius: 16px; text-align: center; color: var(--vv-muted); border: 1px dashed var(--vv-border); }
+.vv-empty-title { margin: 0 0 4px; font-weight: 600; color: var(--vv-text); }
+.vv-empty code { font-size: 13px; padding: 2px 6px; border-radius: 6px; background: var(--vv-soft); }
+
+/* ---------- rodapé ---------- */
+.vv-footer {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 48px; padding-top: 20px;
+  border-top: 1px solid var(--vv-border); font-size: 13px; color: var(--vv-text);
+}
+.vv-footer strong { font-weight: 600; }
+
+/* ---------- movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
+/* galeria responsiva: 2 colunas no celular, 3 no tablet, o valor do componente no desktop */
+.vv-gallery .grid-container { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+@media (min-width: 640px) { .vv-gallery .grid-container { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
+@media (min-width: 1024px) { .vv-gallery .grid-container { grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr)) !important; } }
+.vv-gallery .grid-wrap { max-height: none !important; height: auto !important; overflow: visible !important; }
+.vv-gallery .thumbnail-item { aspect-ratio: 4 / 3; }
+
+/* blocos HTML sem o padding padrão do Gradio (alinha hero, seções e métricas à grade) */
+.gradio-container .html-container { padding: 0 !important; }
+
+/* remove a linha própria do Gradio sob as abas (já há a borda do tab-wrapper) */
+.vv-tabs .tab-container::after { display: none !important; }
+/* legenda da galeria: no máximo 2 linhas, sem sobra da 3ª */
+.vv-gallery .caption-label { max-height: calc(2 * 1.35em + 12px) !important; }
+.vv-spaced { margin-top: 8px !important; }
+
+/* a cópia oculta das abas (usada pelo Gradio só para medir) não pode empurrar a largura da página */
+.vv-tabs .tab-wrapper { position: relative; min-width: 0; }
+.vv-tabs .tab-container.visually-hidden { position: absolute !important; left: 0; top: 0; pointer-events: none; }
+.gradio-container, .gradio-container .main, .gradio-container .wrap { min-width: 0 !important; }
+
+/* selo negativo (quando o ajuste piora uma métrica) e nome do modelo */
+.vv-rose { background: #f43f5e; }
+.vv-badge-rose { background: #fff1f2; color: #be123c; box-shadow: inset 0 0 0 1px rgba(225,29,72,.15); }
+.dark .vv-badge-rose { background: rgba(244,63,94,.1); color: #fda4af; box-shadow: inset 0 0 0 1px rgba(251,113,133,.2); }
+.vv-code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 13px; padding: 1px 6px; border-radius: 6px; background: var(--vv-soft); color: var(--vv-text); }
