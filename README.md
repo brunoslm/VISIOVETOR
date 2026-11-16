@@ -87,7 +87,7 @@ Nos dois casos, a diagonal contém os pares corretos e o resto do lote funciona 
 
 A primeira versão usava o CLIP original da OpenAI (`openai/clip-vit-base-patch32`), treinado quase só em inglês. Buscas como "um gato" traziam cachorros e "duas pessoas se abraçando" trazia artes marciais. Trocar por um modelo **multilíngue** foi a maior melhora, maior que qualquer fine-tuning:
 
-| Validação (300 imagens, 1500 legendas) | CLIP B/32 | CLIP B/32 ajustado | SigLIP 2 base | **SigLIP 2 ajustado** |
+| Validação (300 imagens, 1500 legendas; treino com 2000 imagens) | CLIP B/32 | CLIP B/32 ajustado | SigLIP 2 base | **SigLIP 2 ajustado** |
 |---|---:|---:|---:|---:|
 | Texto→Imagem R@1 | 19,7 | 42,0 | 75,5 | **80,3** |
 | Texto→Imagem R@5 | 41,5 | 74,5 | 95,0 | **97,3** |
@@ -98,9 +98,11 @@ A primeira versão usava o CLIP original da OpenAI (`openai/clip-vit-base-patch3
 
 *R@K = % de consultas em que o item correto aparece entre os K primeiros.*
 
+> Essas métricas (e o modelo em `models/ptbr-finetuned/`) vêm de um treino com 2000 imagens de treino e 300 de validação. O `prepare_data.py` agora baixa 6000 + 1000, então re-treinar leva mais tempo e gera números diferentes; o `metrics.json` novo substitui o atual.
+
 ### Estratégia de fine-tuning
 
-Leve, para rodar **em CPU em ~7 minutos** (fora a vetorização inicial das imagens):
+Leve, para rodar **em CPU**: ~7 minutos com 2000 imagens de treino (fora a vetorização inicial das imagens), proporcionalmente mais com as 6000 padrão:
 
 | Componente | Status |
 |---|---|
@@ -121,12 +123,75 @@ VISIOVETOR_BASE_MODEL=openai/clip-vit-base-patch32 python scripts/finetune.py
 
 ---
 
+## 🤵 Persona Jeffrey
+
+O **Jeffrey** é o assistente do VisioVetor: **cordial, educado e honesto**. Ele cumprimenta com gentileza, explica com clareza, só cita números que vêm do sistema e recusa com educação o que foge do escopo (reconhecimento facial, diagnóstico, inventar métricas).
+
+### No app: o painel do Jeffrey
+
+Acima de cada galeria, o Jeffrey explica a busca que acabou de rodar:
+
+* **o que ele fez**: virou a frase ou a foto em vetor, comparou com o catálogo, aplicou o filtro de tags (e quantas imagens sobraram) e quanto tempo levou;
+* **como ler o resultado**: se o 1º lugar se destaca ou está empatado, quais termos da busca aparecem nas legendas, qual tag ajuda a restringir;
+* no zero-shot, se o modelo está confiante ou dividido entre rótulos; na comparação, se os dois modelos concordam.
+
+O texto é gerado por regras a partir dos números reais da busca (`src/jeffrey.py`), sem LLM, então não inventa nada.
+
+### Converse com o Jeffrey
+
+Logo abaixo da fala dele há um chat. Ele lembra da última busca de cada aba e responde com os números dela:
+
+* **sobre o resultado**: "por que essa foi a primeira?", "e a terceira?", "o que significa o score?", "quais tags aparecem?", "o que você fez?";
+* **quando não agradou**: "não era isso" traz sugestões tiradas de legendas reais do catálogo;
+* **sobre o catálogo**: "tem foto de gato?" conta as legendas de verdade (e admite quando não há nenhuma);
+* **pedindo uma busca**: "busca um cachorro na neve" roda a busca, atualiza a galeria e o painel (abas Texto → Imagem e Base × Ajustado);
+* **dúvidas gerais**: projeto, conceitos de IA, erros comuns e limites, respondidas a partir dos datasets da persona. A pergunta mais parecida é achada por TF-IDF de palavras e trigramas (aguenta erro de digitação); se nada for parecido o bastante, ele diz que não entendeu em vez de chutar.
+
+Perguntas específicas (posição, "qual tem X", catálogo, pedidos de busca) são respondidas por regras, na hora e sem erro (`src/jeffrey_chat.py`). As abertas ("qual o score máximo possível?", "esse resultado é bom?") vão para um **LLM local** (`src/jeffrey_llm.py`, padrão **Qwen2.5-3B-Instruct**), que recebe os fatos do projeto, as faixas de score medidas no índice, a última busca e as respostas parecidas dos datasets (busca semântica com MiniLM multilíngue). O começo fixo do prompt fica em cache, então em CPU o primeiro texto aparece em ~4 s, com streaming.
+
+| `VISIOVETOR_JEFFREY_LLM` | |
+|---|---|
+| *(padrão)* `Qwen/Qwen2.5-3B-Instruct` | ~6 GB, ~6 tokens/s em CPU; o melhor nos testes |
+| `Qwen/Qwen2.5-1.5B-Instruct` | ~3 GB, 2x mais rápido, mas erra mais ao ler os resultados |
+| `off` | sem LLM: só as regras (o app abre sem baixar nada) |
+
+O modelo carrega em segundo plano; até ele ficar pronto (ou se falhar), o chat usa as regras.
+
+### Datasets para treinar um LLM com a persona
+
+```bash
+python scripts/generate_dataset.py                 # gera tudo em data/processed/
+python scripts/generate_dataset.py --dpo-max 400   # mais pares de preferência
+```
+
+São cerca de **700 conversas** e **270 pares de preferência**, em três origens:
+
+* **escritos à mão**: identidade, conhecimento do projeto, limites, suporte técnico, conceitos de IA, segurança contra manipulação e instruções. Muitas perguntas aparecem de várias formas;
+* **a partir dos dados reais**: buscas feitas nos índices de vetores, com os scores verdadeiros: explicação de resultados, imagens parecidas, legendas e zero-shot, refinamento de buscas vagas com legendas do catálogo, contagens por tag ("tem foto de girafa?" → "não encontrei nenhuma") e comparação base × ajustado. Usam o **mesmo narrador do painel**;
+* **preferências (DPO)**: pares escritos à mão e rejeições geradas a partir das boas respostas (grosseria, nome errado, números inventados, emojis, inglês, certeza exagerada).
+
+A lista completa, com contagens e formatos, fica em [`data/processed/README.md`](data/processed/README.md), gerado junto com os dados. Os números citados vêm de `metrics.json` e do catálogo; depois de re-treinar, basta rodar o gerador de novo. O script valida tudo: ordem das mensagens, respostas vazias, nome errado, emojis e placeholders.
+
+### Treinar o Jeffrey (LoRA)
+
+```bash
+pip install -r requirements-llm.txt
+python scripts/train_jeffrey.py                    # SFT com LoRA no Qwen2.5 0.5B Instruct
+python scripts/train_jeffrey.py --dpo              # SFT e depois DPO
+python scripts/train_jeffrey.py --max-steps 5      # teste rápido do pipeline
+```
+
+O adaptador fica em `models/jeffrey-lora/`, e no final o script mostra as respostas do modelo para algumas perguntas de teste. Em CPU, o treino completo leva horas; com GPU, minutos.
+
+---
+
 ## 📁 Estrutura do Projeto
 
 ```text
 visiovetor/
 ├── README.md
 ├── requirements.txt
+├── requirements-llm.txt       # Extras para treinar o LLM (trl, peft)
 ├── config.py                  # Caminhos, modelo, dataset, device, tags
 ├── run.sh / run.bat           # Setup + dados + fine-tuning + índice + UI
 ├── app.py                     # Interface Gradio
@@ -134,17 +199,26 @@ visiovetor/
 │   ├── prepare_data.py        # Baixa subconjunto do Flickr8k PT-BR (streaming)
 │   ├── finetune.py            # Fine-tuning contrastivo + avaliação antes/depois
 │   ├── build_index.py         # Vetoriza o catálogo para cada modelo
-│   └── generate_dataset.py    # Dataset JSONL de persona (alinhamento de LLM)
+│   ├── generate_dataset.py    # Gera os JSONLs da persona Jeffrey (SFT, instrução, DPO)
+│   └── train_jeffrey.py       # LoRA (SFT + DPO) de um LLM pequeno com a persona
 ├── data/
 │   ├── raw/                   # images/ + captions.jsonl
-│   ├── processed/             # JSONLs de comportamento/persona
+│   ├── processed/             # JSONLs da persona Jeffrey (SFT, instrução, DPO)
 │   └── embeddings/            # Cache .npy + .json dos índices
-├── models/ptbr-finetuned/     # Modelo ajustado (gerado)
+├── models/
+│   ├── ptbr-finetuned/        # SigLIP 2 ajustado (gerado; usado pelo app)
+│   └── clip-ptbr/             # CLIP B/32 ajustado da 1ª versão (só referência da tabela; o app não usa)
 └── src/
+    ├── __init__.py
     ├── embeddings.py          # Encoder CLIP/SigLIP: inferência, normalização L2, zero-shot
     ├── vector_store.py        # Busca vetorial NumPy + filtro por tags + persistência
     ├── catalog.py             # Construção/cache dos índices por modelo
     ├── data.py                # Leitura do catálogo e extração de tags
+    ├── persona.py             # Persona Jeffrey: prompt de sistema e fatos do projeto
+    ├── jeffrey.py             # Narrador: explicações do painel (e dos datasets)
+    ├── jeffrey_chat.py        # Chat com o Jeffrey: regras (contexto da busca, catálogo, base de conhecimento)
+    ├── jeffrey_llm.py         # Chat com o Jeffrey: LLM local com os fatos reais (RAG + cache de prefixo)
+    ├── persona_data/          # Construtores dos datasets: common, manual, grounded, dpo
     ├── ui_theme.py            # Tema Gradio (zinc + sky, Inter, claro/escuro) e blocos HTML
     ├── ui.css                 # Estilos da interface (abas em pílula, galeria, métricas)
     └── metrics.py             # Recall@K texto↔imagem
@@ -154,7 +228,10 @@ visiovetor/
 
 ## ⚡ Instalação e Execução
 
-Pré-requisitos: Python 3.10+ e ~5 GB livres (dependências, dados, modelo base de 1,5 GB e o modelo ajustado).
+Pré-requisitos: Python 3.10+ e:
+
+* **~6 GB livres** para o essencial: dependências (~1,6 GB), dados (~0,5 GB), índices (~0,3 GB), SigLIP 2 base (1,5 GB), modelo ajustado (1,5 GB) e MiniLM (~0,5 GB);
+* **+~6 GB** de disco e RAM equivalente para o LLM do chat (Qwen2.5-3B, ligado por padrão). Para não baixar, use `VISIOVETOR_JEFFREY_LLM=off`.
 
 ### Automático
 
@@ -171,8 +248,8 @@ O script cria o `venv`, instala as dependências (PyTorch CPU se não houver GPU
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-python scripts/prepare_data.py            # ~150 MB, 2000 treino + 300 val
-python scripts/finetune.py                # ~10-15 min em CPU
+python scripts/prepare_data.py            # ~500 MB, Flickr8k completo: 6000 treino + 1000 val
+python scripts/finetune.py                # em CPU: ~7 min por 2000 imagens de treino
 python scripts/build_index.py             # vetoriza o catálogo
 python app.py
 ```
@@ -200,4 +277,4 @@ Use `"split": "val"` para as imagens de avaliação. Os índices são reconstru�
 * **Atual (NumPy em memória):** busca $O(N \cdot D)$, $D = 768$ — bom até ~100 mil imagens.
 * **Produção:** FAISS ou Qdrant com índice **HNSW** (busca ~$O(\log N)$).
 * **Fine-tuning:** descongelar camadas finais do encoder de visão (GPU), LoRA via `peft`, mais dados (Flickr30k / COCO traduzidos).
-* **Assistente:** usar os JSONLs de `data/processed/` (persona "James") para ajustar um LLM pequeno que explique os resultados da busca.
+* **Assistente:** carregar no chat do app o adaptador LoRA treinado com `scripts/train_jeffrey.py` (hoje o chat usa o Qwen2.5-3B sem ajuste + regras) e comparar com o modelo atual.

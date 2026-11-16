@@ -5,7 +5,7 @@ Gera:
   data/raw/captions.jsonl   (image, captions[5], tags, split)
 
 Uso:
-  python scripts/prepare_data.py                     # 2000 treino + 300 validação
+  python scripts/prepare_data.py                     # 6000 treino + 1000 validação (Flickr8k completo)
   python scripts/prepare_data.py --n-train 500 --n-val 100
 
 Também é possível usar suas próprias imagens: basta montar o captions.jsonl

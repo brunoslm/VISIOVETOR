@@ -1,0 +1,4 @@
+# Extras para treinar o LLM do Jeffrey (scripts/train_jeffrey.py)
+-r requirements.txt
+trl>=1.0
+peft>=0.15

@@ -71,6 +71,13 @@ class VectorStore:
         top = top[np.argsort(-scores[top])]
         return [SearchResult(int(i), float(scores[i]), self.metadata[i]) for i in top]
 
+    def count_with_tags(self, tags: list[str] | None) -> int:
+        """Quantos itens passam pelo filtro de tags (todas precisam estar presentes)."""
+        if not tags:
+            return len(self)
+        wanted = set(tags)
+        return sum(wanted.issubset(m.get("tags", [])) for m in self.metadata)
+
     def all_tags(self) -> list[str]:
         return sorted({t for m in self.metadata for t in m.get("tags", [])})
 

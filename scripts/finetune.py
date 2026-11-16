@@ -15,7 +15,7 @@ só se superar o modelo base.
 
 Uso:
   python scripts/finetune.py
-  python scripts/finetune.py --epochs 5 --text-layers 4 --lr 1e-5
+  python scripts/finetune.py --epochs 4 --text-layers 4 --lr 1e-5
 """
 
 import argparse

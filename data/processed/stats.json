@@ -1,0 +1,153 @@
+{
+  "persona": "Jeffrey",
+  "seed": 42,
+  "modelo_base": "google/siglip2-base-patch16-224",
+  "metricas_citadas": {
+    "t2i_R@1_base": 75.53333333333333,
+    "t2i_R@1_ajustado": 80.33333333333333
+  },
+  "arquivos": [
+    {
+      "arquivo": "identidade.jsonl",
+      "formato": "chat",
+      "exemplos": 79,
+      "palavras_resposta": 21.848101265822784
+    },
+    {
+      "arquivo": "conhecimento_projeto.jsonl",
+      "formato": "chat",
+      "exemplos": 64,
+      "palavras_resposta": 47.4375
+    },
+    {
+      "arquivo": "limites.jsonl",
+      "formato": "chat",
+      "exemplos": 29,
+      "palavras_resposta": 35.93103448275862
+    },
+    {
+      "arquivo": "comportamento.jsonl",
+      "formato": "chat",
+      "exemplos": 8,
+      "palavras_resposta": 47.625
+    },
+    {
+      "arquivo": "treino_chat.jsonl",
+      "formato": "chat",
+      "exemplos": 17,
+      "palavras_resposta": 29.794871794871796
+    },
+    {
+      "arquivo": "suporte_tecnico.jsonl",
+      "formato": "chat",
+      "exemplos": 32,
+      "palavras_resposta": 31.125
+    },
+    {
+      "arquivo": "uso_do_app.jsonl",
+      "formato": "chat",
+      "exemplos": 27,
+      "palavras_resposta": 41.44444444444444
+    },
+    {
+      "arquivo": "conceitos_ia.jsonl",
+      "formato": "chat",
+      "exemplos": 35,
+      "palavras_resposta": 45.08571428571429
+    },
+    {
+      "arquivo": "seguranca.jsonl",
+      "formato": "chat",
+      "exemplos": 15,
+      "palavras_resposta": 33
+    },
+    {
+      "arquivo": "explicacao_resultados.jsonl",
+      "formato": "chat",
+      "exemplos": 80,
+      "palavras_resposta": 128.45
+    },
+    {
+      "arquivo": "imagem_para_imagem.jsonl",
+      "formato": "chat",
+      "exemplos": 50,
+      "palavras_resposta": 75.88
+    },
+    {
+      "arquivo": "imagem_para_texto.jsonl",
+      "formato": "chat",
+      "exemplos": 50,
+      "palavras_resposta": 80.36
+    },
+    {
+      "arquivo": "refinamento_busca.jsonl",
+      "formato": "chat",
+      "exemplos": 54,
+      "palavras_resposta": 69.75925925925925
+    },
+    {
+      "arquivo": "catalogo.jsonl",
+      "formato": "chat",
+      "exemplos": 73,
+      "palavras_resposta": 34.64383561643836
+    },
+    {
+      "arquivo": "comparacao_modelos.jsonl",
+      "formato": "chat",
+      "exemplos": 40,
+      "palavras_resposta": 72.225
+    },
+    {
+      "arquivo": "conversas_geradas.jsonl",
+      "formato": "chat",
+      "exemplos": 40,
+      "palavras_resposta": 47.333333333333336
+    },
+    {
+      "arquivo": "treino_instrucao.jsonl",
+      "formato": "instrução",
+      "exemplos": 33,
+      "palavras_resposta": 27.757575757575758
+    },
+    {
+      "arquivo": "preferencias_dpo.jsonl",
+      "formato": "preferência",
+      "exemplos": 266,
+      "palavras_resposta": 50.443609022556394
+    },
+    {
+      "arquivo": "jeffrey_sft_train.jsonl",
+      "formato": "chat",
+      "exemplos": 653,
+      "palavras_resposta": 54.58115183246073
+    },
+    {
+      "arquivo": "jeffrey_sft_val.jsonl",
+      "formato": "chat",
+      "exemplos": 73,
+      "palavras_resposta": 55.27058823529412
+    },
+    {
+      "arquivo": "jeffrey_dpo_train.jsonl",
+      "formato": "preferência",
+      "exemplos": 239,
+      "palavras_resposta": 49.37238493723849
+    },
+    {
+      "arquivo": "jeffrey_dpo_val.jsonl",
+      "formato": "preferência",
+      "exemplos": 27,
+      "palavras_resposta": 59.925925925925924
+    }
+  ],
+  "tipos_rejeicao_dpo": {
+    "manual": 16,
+    "grosseria": 37,
+    "certeza": 45,
+    "ingles": 43,
+    "seco": 32,
+    "emoji": 49,
+    "nome_errado": 27,
+    "numeros": 17
+  }
+}

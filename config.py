@@ -30,8 +30,8 @@ FINETUNED_MODEL_DIR = MODELS_DIR / "ptbr-finetuned"
 # Dataset (Hugging Face) — Flickr8k com legendas traduzidas para português
 # ---------------------------------------------------------------------------
 HF_DATASET = os.getenv("VISIOVETOR_HF_DATASET", "laicsiifes/flickr8k-pt-br")
-N_TRAIN_IMAGES = int(os.getenv("VISIOVETOR_N_TRAIN", "2000"))
-N_VAL_IMAGES = int(os.getenv("VISIOVETOR_N_VAL", "300"))
+N_TRAIN_IMAGES = int(os.getenv("VISIOVETOR_N_TRAIN", "6000"))
+N_VAL_IMAGES = int(os.getenv("VISIOVETOR_N_VAL", "1000"))
 
 # ---------------------------------------------------------------------------
 # Hardware / inferência

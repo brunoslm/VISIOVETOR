@@ -114,16 +114,13 @@ class ClipEncoder:
 
     @torch.no_grad()
     def zero_shot(self, image: Image.Image, labels: Sequence[str], template: str = "uma foto de {}") -> dict[str, float]:
-        """Classificação zero-shot.
+        """Classificação zero-shot: probabilidade RELATIVA entre os rótulos, softmax(τ · I·Tᵀ).
 
-        CLIP: softmax(τ · I·Tᵀ) — os rótulos competem entre si.
-        SigLIP: sigmoid(τ · I·Tᵀ + b) — cada rótulo é avaliado de forma independente.
+        O SigLIP foi treinado com sigmoide (cada par avaliado isoladamente), mas com rótulos
+        curtos a sigmoide fica perto de 0 para todos, mesmo o correto. O softmax sobre os
+        mesmos logits ordena bem os rótulos e é o que faz sentido mostrar ao usuário.
         """
         img = torch.from_numpy(self.encode_image(image))
         txt = torch.from_numpy(self.encode_texts([template.format(l) for l in labels]))
         logits = self.model.logit_scale.exp().cpu() * (txt @ img)
-        if self.is_siglip:
-            probs = torch.sigmoid(logits + self.model.logit_bias.cpu()).tolist()
-        else:
-            probs = logits.softmax(dim=0).tolist()
-        return dict(zip(labels, probs))
+        return dict(zip(labels, logits.softmax(dim=0).tolist()))
