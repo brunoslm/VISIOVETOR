@@ -1,10 +1,12 @@
 <img src="src/assets/logo.svg" alt="Logo do VisioVetor" width="72" height="72">
 
-# VisioVetor — Engine de Busca Semântica Multimodal
+# VisioVetor — Busca Semântica de Imagens em Português
 
-Engine de busca vetorial multimodal em **Python** + **PyTorch** + **Hugging Face Transformers**, usando o **SigLIP 2 (`google/siglip2-base-patch16-224`)** para mapear imagens e textos em um espaço latente compartilhado de **768 dimensões**. O código funciona com qualquer modelo da família CLIP/SigLIP do Hub (ex.: `openai/clip-vit-base-patch32`), trocando `VISIOVETOR_BASE_MODEL`.
+Busque fotos escrevendo em português o que você procura ("um cachorro pulando na praia"), ou envie uma foto para achar outras parecidas. Sem tags manuais: o modelo entende a descrição.
 
-O projeto inclui um **fine-tuning contrastivo** com legendas em **português** (Flickr8k PT-BR). O modelo ajustado está publicado no Hugging Face: [`brunoslm/visiovetor`](https://huggingface.co/brunoslm/visiovetor).
+**Resultado:** um fine-tuning contrastivo de ~23 min em CPU, com legendas em português (Flickr8k PT-BR), levou o acerto do 1º resultado de **66,2% para 72,1%**, eliminando **18% dos erros** do modelo base. O modelo ajustado está publicado no Hugging Face: [`brunoslm/visiovetor`](https://huggingface.co/brunoslm/visiovetor).
+
+Por dentro: **Python** + **PyTorch** + **Hugging Face Transformers**, com o **SigLIP 2 (`google/siglip2-base-patch16-224`)** colocando imagens e textos no mesmo espaço vetorial de **768 dimensões**, e busca por similaridade de cosseno em NumPy. O código funciona com qualquer modelo da família CLIP/SigLIP do Hub (ex.: `openai/clip-vit-base-patch32`), trocando `VISIOVETOR_BASE_MODEL`.
 
 ![Demonstração: busca por "um cachorro pulando na praia" e comparação entre o modelo base e o ajustado](docs/demo.gif)
 
@@ -18,7 +20,7 @@ Funcionalidades:
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```mermaid
 graph TD
@@ -53,7 +55,7 @@ graph TD
 
 ---
 
-## 📐 Fundamentação Matemática
+## Fundamentação Matemática
 
 ### 1. Normalização L2
 
@@ -85,7 +87,7 @@ Nos dois casos, a diagonal contém os pares corretos e o resto do lote funciona 
 
 ---
 
-## 🎯 Modelo e fine-tuning
+## Modelo e fine-tuning
 
 ### Por que SigLIP 2?
 
@@ -131,10 +133,10 @@ Leve, para rodar **em CPU em ~23 minutos** com as 6000 imagens de treino (fora a
 
 | Componente | Status |
 |---|---|
-| Encoder de visão completo | ❄️ congelado — vetores de imagem calculados uma vez e mantidos em cache |
-| Últimas 4 camadas do encoder de texto | 🔥 treinável |
-| Layer norm final + cabeça do texto | 🔥 treinável |
-| Temperatura (`logit_scale`) e viés (`logit_bias`) | 🔥 treinável |
+| Encoder de visão completo | Congelado — vetores de imagem calculados uma vez e mantidos em cache |
+| Últimas 4 camadas do encoder de texto | Treinável |
+| Layer norm final + cabeça do texto | Treinável |
+| Temperatura (`logit_scale`) e viés (`logit_bias`) | Treinável |
 
 A cada época, uma das 5 legendas de cada imagem é sorteada (augmentation textual). O melhor checkpoint na validação é salvo em `models/ptbr-finetuned/` junto com `metrics.json`, e **só se superar o modelo base**.
 
@@ -148,9 +150,16 @@ VISIOVETOR_BASE_MODEL=openai/clip-vit-base-patch32 python scripts/finetune.py
 
 ---
 
-## 🤵 Persona Jeffrey
+## Persona Jeffrey
 
 O **Jeffrey** é o assistente do VisioVetor: **cordial, educado e honesto**. Ele cumprimenta com gentileza, explica com clareza, só cita números que vêm do sistema e recusa com educação o que foge do escopo (reconhecimento facial, diagnóstico, inventar métricas).
+
+* **Painel:** acima de cada galeria, explica a busca que acabou de rodar (o que foi feito, quanto tempo levou, como ler os scores). Gerado por regras a partir dos números reais, sem LLM.
+* **Chat:** responde perguntas sobre os resultados e o projeto. As específicas ("por que essa foi a primeira?") vão por regras; as abertas, por um **LLM local** (Qwen2.5-3B-Instruct) com RAG sobre os fatos do projeto.
+* **Datasets e LoRA:** ~700 conversas e ~270 pares de preferência (SFT + DPO) gerados a partir dos dados reais, com script para treinar um LLM pequeno com a persona.
+
+<details>
+<summary><b>Detalhes do Jeffrey</b> (painel, chat, configuração do LLM, datasets e treino)</summary>
 
 ### No app: o painel do Jeffrey
 
@@ -208,9 +217,11 @@ python scripts/train_jeffrey.py --max-steps 5      # teste rápido do pipeline
 
 O adaptador fica em `models/jeffrey-lora/`, e no final o script mostra as respostas do modelo para algumas perguntas de teste. Em CPU, o treino completo leva horas; com GPU, minutos.
 
+</details>
+
 ---
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 visiovetor/
@@ -252,7 +263,7 @@ visiovetor/
 
 ---
 
-## ⚡ Instalação e Execução
+## Instalação e Execução
 
 Pré-requisitos: Python 3.10+ e:
 
@@ -275,7 +286,7 @@ python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
 python scripts/prepare_data.py            # ~500 MB, Flickr8k completo: 6000 treino + 1000 val
-python scripts/finetune.py                # ~25 min em CPU (6000 imagens)
+python scripts/finetune.py                # ~23 min em CPU (6000 imagens)
 python scripts/build_index.py             # vetoriza o catálogo
 python app.py
 ```
@@ -298,13 +309,13 @@ Use `"split": "val"` para as imagens de avaliação. Os índices são reconstru�
 
 ---
 
-## ⚠️ Limitações
+## Limitações
 
 * O catálogo da UI inclui as imagens de treino; as métricas acima são medidas **somente** na validação.
 * As legendas do Flickr8k PT-BR são traduções automáticas.
 * Esses modelos não são adequados para biometria/reconhecimento facial.
 
-## 📊 Complexidade & Roadmap
+## Complexidade & Roadmap
 
 * **Atual (NumPy em memória):** busca $O(N \cdot D)$, $D = 768$ — bom até ~100 mil imagens.
 * **Produção:** FAISS ou Qdrant com índice **HNSW** (busca ~$O(\log N)$).
