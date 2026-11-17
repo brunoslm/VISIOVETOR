@@ -13,9 +13,9 @@ from dataclasses import dataclass
 
 import config
 
-NAME = "Jeffrey"
+NOME = "Jeffrey"
 
-SYSTEM_PROMPT = (
+PROMPT_SISTEMA = (
     "Você é o Jeffrey, assistente do VisioVetor, um sistema de busca semântica que conecta "
     "imagens e textos. Você é cordial, educado e acolhedor: cumprimenta com gentileza, "
     "agradece a paciência e trata a pessoa por \"você\". Ao mesmo tempo, é preciso e honesto: "
@@ -33,33 +33,33 @@ def fmt(v: float, dec: int = 1) -> str:
 
 
 @dataclass(frozen=True)
-class Facts:
-    base_model: str
+class Fatos:
+    modelo_base: str
     dim: int
-    n_images: int
-    n_train: int
+    n_imagens: int
+    n_treino: int
     n_val: int
-    n_captions: int
+    n_legendas: int
     tags: tuple[str, ...]
     base: dict[str, float]
-    tuned: dict[str, float]
-    train_minutes: float
-    epochs: int
-    best_epoch: int
-    text_layers: int
+    ajustado: dict[str, float]
+    minutos_treino: float
+    epocas: int
+    melhor_epoca: int
+    camadas_texto: int
     # comparação histórica com o CLIP original (medida neste projeto, mesma validação)
     clip_base_t2i_r1: float = 10.8
-    clip_tuned_t2i_r1: float = 28.4
+    clip_ajustado_t2i_r1: float = 28.4
 
-    def r(self, which: str, key: str) -> str:
-        return fmt(getattr(self, which)[key]) + "%"
+    def r(self, qual: str, chave: str) -> str:
+        return fmt(getattr(self, qual)[chave]) + "%"
 
-    def gain(self, key: str) -> str:
-        d = self.tuned[key] - self.base[key]
+    def ganho(self, chave: str) -> str:
+        d = self.ajustado[chave] - self.base[chave]
         return ("+" if d >= 0 else "") + fmt(d)
 
 
-_DEFAULT_METRICS = {
+_METRICAS_PADRAO = {
     "base_model": "google/siglip2-base-patch16-224",
     "n_train": 6000, "n_val": 1000, "train_seconds": 1358.8, "best_epoch": 4,
     "args": {"epochs": 4, "text_layers": 4},
@@ -68,35 +68,35 @@ _DEFAULT_METRICS = {
 }
 
 
-def load_facts() -> Facts:
-    path = config.FINETUNED_MODEL_DIR / "metrics.json"
-    m = json.loads(path.read_text(encoding="utf-8")) if path.exists() else _DEFAULT_METRICS
+def carregar_fatos() -> Fatos:
+    caminho = config.DIR_MODELO_AJUSTADO / "metrics.json"
+    m = json.loads(caminho.read_text(encoding="utf-8")) if caminho.exists() else _METRICAS_PADRAO
 
-    n_images = n_captions = 0
+    n_imagens = n_legendas = 0
     tags: set[str] = set()
-    if config.CAPTIONS_FILE.exists():
-        for line in config.CAPTIONS_FILE.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                rec = json.loads(line)
-                n_images += 1
-                n_captions += len(rec["captions"])
-                tags.update(rec.get("tags", []))
+    if config.ARQUIVO_LEGENDAS.exists():
+        for linha in config.ARQUIVO_LEGENDAS.read_text(encoding="utf-8").splitlines():
+            if linha.strip():
+                reg = json.loads(linha)
+                n_imagens += 1
+                n_legendas += len(reg["captions"])
+                tags.update(reg.get("tags", []))
     else:
-        n_images, n_captions = m["n_train"] + m["n_val"], 5 * (m["n_train"] + m["n_val"])
-        tags = set(config.TAG_KEYWORDS)
+        n_imagens, n_legendas = m["n_train"] + m["n_val"], 5 * (m["n_train"] + m["n_val"])
+        tags = set(config.PALAVRAS_CHAVE_TAGS)
 
-    return Facts(
-        base_model=m["base_model"],
+    return Fatos(
+        modelo_base=m["base_model"],
         dim=768 if "siglip" in m["base_model"] else 512,
-        n_images=n_images,
-        n_train=m["n_train"],
+        n_imagens=n_imagens,
+        n_treino=m["n_train"],
         n_val=m["n_val"],
-        n_captions=n_captions,
+        n_legendas=n_legendas,
         tags=tuple(sorted(tags)),
         base=m["baseline"],
-        tuned=m["best"],
-        train_minutes=m["train_seconds"] / 60,
-        epochs=m["args"]["epochs"],
-        best_epoch=m["best_epoch"],
-        text_layers=m["args"]["text_layers"],
+        ajustado=m["best"],
+        minutos_treino=m["train_seconds"] / 60,
+        epocas=m["args"]["epochs"],
+        melhor_epoca=m["best_epoch"],
+        camadas_texto=m["args"]["text_layers"],
     )

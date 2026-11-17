@@ -34,80 +34,80 @@ import torch.nn.functional as F  # noqa: E402
 from tqdm import tqdm  # noqa: E402
 
 import config  # noqa: E402
-from src.data import load_records  # noqa: E402
-from src.embeddings import ClipEncoder, l2_normalize  # noqa: E402
-from src.metrics import format_metrics, retrieval_recall  # noqa: E402
+from src.data import carregar_registros  # noqa: E402
+from src.embeddings import CodificadorClip, normalizar_l2  # noqa: E402
+from src.metrics import formatar_metricas, recall_recuperacao  # noqa: E402
 
 
-def set_seed(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+def fixar_semente(semente: int) -> None:
+    random.seed(semente)
+    np.random.seed(semente)
+    torch.manual_seed(semente)
 
 
-def encode_captions(enc: ClipEncoder, captions: list[str]) -> torch.Tensor:
-    return l2_normalize(enc.text_features(**enc.tokenize(captions)))
+def codificar_legendas(cod: CodificadorClip, legendas: list[str]) -> torch.Tensor:
+    return normalizar_l2(cod.features_texto(**cod.tokenizar(legendas)))
 
 
 @torch.no_grad()
-def evaluate(enc: ClipEncoder, img_vecs: torch.Tensor, records: list[dict]) -> dict[str, float]:
-    enc.model.eval()
-    caps, owner = [], []
-    for i, r in enumerate(records):
-        caps.extend(r["captions"])
-        owner.extend([i] * len(r["captions"]))
-    txt = torch.cat([encode_captions(enc, caps[j : j + 128]).cpu() for j in range(0, len(caps), 128)]).numpy()
-    return retrieval_recall(img_vecs.numpy(), txt, np.array(owner))
+def avaliar(cod: CodificadorClip, vetores_img: torch.Tensor, registros: list[dict]) -> dict[str, float]:
+    cod.modelo.eval()
+    legs, dona = [], []
+    for i, r in enumerate(registros):
+        legs.extend(r["captions"])
+        dona.extend([i] * len(r["captions"]))
+    txt = torch.cat([codificar_legendas(cod, legs[j : j + 128]).cpu() for j in range(0, len(legs), 128)]).numpy()
+    return recall_recuperacao(vetores_img.numpy(), txt, np.array(dona))
 
 
 def rsum(m: dict[str, float]) -> float:
     return sum(v for k, v in m.items() if "R@" in k)
 
 
-def configure_trainable(enc: ClipEncoder, text_layers: int) -> tuple[list, list]:
+def configurar_treinaveis(cod: CodificadorClip, camadas_texto: int) -> tuple[list, list]:
     """Congela tudo e libera as últimas camadas do texto + cabeça + temperatura."""
-    m = enc.model
+    m = cod.modelo
     for p in m.parameters():
         p.requires_grad = False
 
-    text = m.text_model
-    layers = text.encoder.layers
-    n = min(text_layers, len(layers))
-    encoder_params = [p for layer in layers[len(layers) - n :] for p in layer.parameters()]
+    texto_modelo = m.text_model
+    camadas = texto_modelo.encoder.layers
+    n = min(camadas_texto, len(camadas))
+    params_codificador = [p for camada in camadas[len(camadas) - n :] for p in camada.parameters()]
     # tudo do texto que fica depois do encoder (layer norm final, head de pooling)
-    for name, module in text.named_children():
-        if name not in ("embeddings", "encoder"):
-            encoder_params += list(module.parameters())
+    for nome, modulo in texto_modelo.named_children():
+        if nome not in ("embeddings", "encoder"):
+            params_codificador += list(modulo.parameters())
     if hasattr(m, "text_projection"):  # CLIP
-        encoder_params += list(m.text_projection.parameters())
-    scalars = [m.logit_scale] + ([m.logit_bias] if getattr(m, "logit_bias", None) is not None else [])
+        params_codificador += list(m.text_projection.parameters())
+    escalares = [m.logit_scale] + ([m.logit_bias] if getattr(m, "logit_bias", None) is not None else [])
 
-    for p in encoder_params + scalars:
+    for p in params_codificador + escalares:
         p.requires_grad = True
-    n_train = sum(p.numel() for p in encoder_params + scalars)
+    n_treino = sum(p.numel() for p in params_codificador + escalares)
     n_total = sum(p.numel() for p in m.parameters())
-    print(f"🧮 Parâmetros treináveis: {n_train / 1e6:.1f}M de {n_total / 1e6:.1f}M ({100 * n_train / n_total:.1f}%)")
-    return encoder_params, scalars
+    print(f"🧮 Parâmetros treináveis: {n_treino / 1e6:.1f}M de {n_total / 1e6:.1f}M ({100 * n_treino / n_total:.1f}%)")
+    return params_codificador, escalares
 
 
-def contrastive_loss(enc: ClipEncoder, txt: torch.Tensor, img: torch.Tensor) -> tuple[torch.Tensor, float]:
-    m = enc.model
-    scale = m.logit_scale.exp()
-    logits = scale * txt @ img.T
-    if enc.is_siglip:
+def perda_contrastiva(cod: CodificadorClip, txt: torch.Tensor, img: torch.Tensor) -> tuple[torch.Tensor, float]:
+    m = cod.modelo
+    escala = m.logit_scale.exp()
+    logits = escala * txt @ img.T
+    if cod.e_siglip:
         logits = logits + m.logit_bias
-        labels = 2 * torch.eye(len(txt), device=txt.device) - 1
-        loss = -F.logsigmoid(labels * logits).sum() / len(txt)
+        rotulos = 2 * torch.eye(len(txt), device=txt.device) - 1
+        perda = -F.logsigmoid(rotulos * logits).sum() / len(txt)
     else:
-        target = torch.arange(len(txt), device=txt.device)
-        loss = 0.5 * (F.cross_entropy(logits, target) + F.cross_entropy(logits.T, target))
-    return loss, scale.item()
+        alvo = torch.arange(len(txt), device=txt.device)
+        perda = 0.5 * (F.cross_entropy(logits, alvo) + F.cross_entropy(logits.T, alvo))
+    return perda, escala.item()
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--base-model", default=config.BASE_MODEL)
-    ap.add_argument("--output", default=str(config.FINETUNED_MODEL_DIR))
+    ap.add_argument("--base-model", default=config.MODELO_BASE)
+    ap.add_argument("--output", default=str(config.DIR_MODELO_AJUSTADO))
     ap.add_argument("--epochs", type=int, default=4)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--lr", type=float, default=1e-5, help="LR das camadas de texto")
@@ -115,108 +115,108 @@ def main() -> None:
     ap.add_argument("--weight-decay", type=float, default=0.05)
     ap.add_argument("--text-layers", type=int, default=4, help="quantas camadas finais do texto treinar")
     ap.add_argument("--warmup", type=float, default=0.1, help="fração de passos de warmup")
-    ap.add_argument("--seed", type=int, default=config.SEED)
+    ap.add_argument("--seed", type=int, default=config.SEMENTE)
     args = ap.parse_args()
 
-    set_seed(args.seed)
-    train = load_records("train")
-    val = load_records("val")
-    if not train or not val:
+    fixar_semente(args.seed)
+    treino = carregar_registros("train")
+    val = carregar_registros("val")
+    if not treino or not val:
         sys.exit("❌ É preciso ter registros com split 'train' e 'val' em data/raw/captions.jsonl")
-    print(f"📚 {len(train)} imagens de treino / {len(val)} de validação | modelo={args.base_model} | device={config.DEVICE}")
+    print(f"📚 {len(treino)} imagens de treino / {len(val)} de validação | modelo={args.base_model} | device={config.DISPOSITIVO}")
 
-    enc = ClipEncoder(args.base_model)
+    cod = CodificadorClip(args.base_model)
     # visão congelada: vetores de imagem calculados uma vez só
-    train_img = torch.from_numpy(enc.encode_images([r["path"] for r in train], show_progress=True))
-    val_img = torch.from_numpy(enc.encode_images([r["path"] for r in val], show_progress=True))
+    img_treino = torch.from_numpy(cod.codificar_imagens([r["path"] for r in treino], mostrar_progresso=True))
+    img_val = torch.from_numpy(cod.codificar_imagens([r["path"] for r in val], mostrar_progresso=True))
 
-    baseline = evaluate(enc, val_img, val)
-    print(f"\n📏 Baseline (antes do fine-tuning): {format_metrics(baseline)}  | rsum={rsum(baseline):.1f}\n")
+    linha_base = avaliar(cod, img_val, val)
+    print(f"\n📏 Baseline (antes do fine-tuning): {formatar_metricas(linha_base)}  | rsum={rsum(linha_base):.1f}\n")
 
-    text_params, scalars = configure_trainable(enc, args.text_layers)
-    opt = torch.optim.AdamW(
+    params_texto, escalares = configurar_treinaveis(cod, args.text_layers)
+    otimizador = torch.optim.AdamW(
         [
-            {"params": text_params, "lr": args.lr, "weight_decay": args.weight_decay},
-            {"params": scalars, "lr": args.scalar_lr, "weight_decay": 0.0},
+            {"params": params_texto, "lr": args.lr, "weight_decay": args.weight_decay},
+            {"params": escalares, "lr": args.scalar_lr, "weight_decay": 0.0},
         ]
     )
-    steps_per_epoch = math.ceil(len(train) / args.batch_size)
-    total_steps = steps_per_epoch * args.epochs
-    warmup = max(1, int(args.warmup * total_steps))
+    passos_por_epoca = math.ceil(len(treino) / args.batch_size)
+    total_passos = passos_por_epoca * args.epochs
+    aquecimento = max(1, int(args.warmup * total_passos))
 
-    def lr_lambda(step: int) -> float:
-        if step < warmup:
-            return (step + 1) / warmup
-        return 0.5 * (1 + math.cos(math.pi * (step - warmup) / max(1, total_steps - warmup)))
+    def fator_lr(passo: int) -> float:
+        if passo < aquecimento:
+            return (passo + 1) / aquecimento
+        return 0.5 * (1 + math.cos(math.pi * (passo - aquecimento) / max(1, total_passos - aquecimento)))
 
-    sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda)
+    agendador = torch.optim.lr_scheduler.LambdaLR(otimizador, fator_lr)
 
-    best = rsum(baseline)
-    history = [{"epoch": 0, **baseline}]
-    out_dir = Path(args.output)
-    saved = False
+    melhor = rsum(linha_base)
+    historico = [{"epoch": 0, **linha_base}]
+    dir_saida = Path(args.output)
+    salvo = False
     t0 = time.time()
 
-    for epoch in range(1, args.epochs + 1):
-        enc.model.train()
-        order = list(range(len(train)))
-        random.shuffle(order)
-        pbar = tqdm(range(0, len(order), args.batch_size), desc=f"Época {epoch}/{args.epochs}", unit="passo")
-        running, steps = 0.0, 0
-        for i in pbar:
-            idx = order[i : i + args.batch_size]
+    for epoca in range(1, args.epochs + 1):
+        cod.modelo.train()
+        ordem = list(range(len(treino)))
+        random.shuffle(ordem)
+        barra = tqdm(range(0, len(ordem), args.batch_size), desc=f"Época {epoca}/{args.epochs}", unit="passo")
+        acumulado, passos = 0.0, 0
+        for i in barra:
+            idx = ordem[i : i + args.batch_size]
             if len(idx) < 2:
                 continue
             # uma legenda aleatória (das 5) por imagem a cada época = data augmentation textual
-            caps = [random.choice(train[j]["captions"]) for j in idx]
-            img = train_img[idx].to(enc.device)
-            txt = encode_captions(enc, caps)
-            loss, scale = contrastive_loss(enc, txt, img)
+            legs = [random.choice(treino[j]["captions"]) for j in idx]
+            img = img_treino[idx].to(cod.dispositivo)
+            txt = codificar_legendas(cod, legs)
+            perda, escala = perda_contrastiva(cod, txt, img)
 
-            opt.zero_grad(set_to_none=True)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(text_params, 1.0)
-            opt.step()
-            sched.step()
+            otimizador.zero_grad(set_to_none=True)
+            perda.backward()
+            torch.nn.utils.clip_grad_norm_(params_texto, 1.0)
+            otimizador.step()
+            agendador.step()
 
-            running += loss.item()
-            steps += 1
-            pbar.set_postfix(loss=f"{running / steps:.3f}", temp=f"{scale:.1f}")
+            acumulado += perda.item()
+            passos += 1
+            barra.set_postfix(loss=f"{acumulado / passos:.3f}", temp=f"{escala:.1f}")
 
-        metrics = evaluate(enc, val_img, val)
-        history.append({"epoch": epoch, "train_loss": running / max(1, steps), **metrics})
-        flag = ""
-        if rsum(metrics) > best:
-            best = rsum(metrics)
-            enc.model.save_pretrained(out_dir)
-            enc.processor.save_pretrained(out_dir)
-            saved = True
-            flag = "  💾 melhor até agora — salvo"
-        print(f"   val: {format_metrics(metrics)} | rsum={rsum(metrics):.1f}{flag}")
+        metricas = avaliar(cod, img_val, val)
+        historico.append({"epoch": epoca, "train_loss": acumulado / max(1, passos), **metricas})
+        marca = ""
+        if rsum(metricas) > melhor:
+            melhor = rsum(metricas)
+            cod.modelo.save_pretrained(dir_saida)
+            cod.processador.save_pretrained(dir_saida)
+            salvo = True
+            marca = "  💾 melhor até agora — salvo"
+        print(f"   val: {formatar_metricas(metricas)} | rsum={rsum(metricas):.1f}{marca}")
 
-    elapsed = time.time() - t0
-    if not saved:
+    decorrido = time.time() - t0
+    if not salvo:
         print("\n⚠️  Nenhuma época superou o modelo base; nada foi salvo. Tente outro --lr / --epochs.")
         return
 
-    best_ep = max(history[1:], key=rsum)
-    report = {
+    melhor_ep = max(historico[1:], key=rsum)
+    relatorio = {
         "base_model": args.base_model,
         "args": vars(args),
-        "n_train": len(train),
+        "n_train": len(treino),
         "n_val": len(val),
-        "train_seconds": round(elapsed, 1),
-        "baseline": baseline,
-        "best": {k: v for k, v in best_ep.items() if "R@" in k},
-        "best_epoch": best_ep["epoch"],
-        "history": history,
+        "train_seconds": round(decorrido, 1),
+        "baseline": linha_base,
+        "best": {k: v for k, v in melhor_ep.items() if "R@" in k},
+        "best_epoch": melhor_ep["epoch"],
+        "history": historico,
     }
-    (out_dir / "metrics.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    (dir_saida / "metrics.json").write_text(json.dumps(relatorio, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"\n✅ Fine-tuning concluído em {elapsed / 60:.1f} min. Modelo salvo em {out_dir}")
+    print(f"\n✅ Fine-tuning concluído em {decorrido / 60:.1f} min. Modelo salvo em {dir_saida}")
     print(f"{'métrica':<10} {'base':>7} {'ajustado':>9} {'Δ':>7}")
-    for k, v in baseline.items():
-        print(f"{k:<10} {v:7.1f} {report['best'][k]:9.1f} {report['best'][k] - v:+7.1f}")
+    for k, v in linha_base.items():
+        print(f"{k:<10} {v:7.1f} {relatorio['best'][k]:9.1f} {relatorio['best'][k] - v:+7.1f}")
 
 
 if __name__ == "__main__":

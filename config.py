@@ -8,14 +8,14 @@ import torch
 # ---------------------------------------------------------------------------
 # Caminhos
 # ---------------------------------------------------------------------------
-ROOT_DIR = Path(__file__).resolve().parent
-DATA_DIR = ROOT_DIR / "data"
-RAW_DIR = DATA_DIR / "raw"
-IMAGES_DIR = RAW_DIR / "images"
-CAPTIONS_FILE = RAW_DIR / "captions.jsonl"  # 1 linha por imagem: image, captions, tags, split
-PROCESSED_DIR = DATA_DIR / "processed"
-EMBEDDINGS_DIR = DATA_DIR / "embeddings"
-MODELS_DIR = ROOT_DIR / "models"
+DIR_RAIZ = Path(__file__).resolve().parent
+DIR_DADOS = DIR_RAIZ / "data"
+DIR_BRUTOS = DIR_DADOS / "raw"
+DIR_IMAGENS = DIR_BRUTOS / "images"
+ARQUIVO_LEGENDAS = DIR_BRUTOS / "captions.jsonl"  # 1 linha por imagem: image, captions, tags, split
+DIR_PROCESSADOS = DIR_DADOS / "processed"
+DIR_EMBEDDINGS = DIR_DADOS / "embeddings"
+DIR_MODELOS = DIR_RAIZ / "models"
 
 # ---------------------------------------------------------------------------
 # Modelos
@@ -23,33 +23,33 @@ MODELS_DIR = ROOT_DIR / "models"
 # SigLIP 2 é multilíngue e entende português muito melhor que o CLIP original da OpenAI
 # (validação Flickr8k PT-BR, 1000 imagens, texto→imagem R@1: CLIP B/32 10,8% | SigLIP 2 base 66,2%).
 # Qualquer modelo da família CLIP/SigLIP do Hub funciona, ex.: "openai/clip-vit-base-patch32".
-BASE_MODEL = os.getenv("VISIOVETOR_BASE_MODEL", "google/siglip2-base-patch16-224")
-FINETUNED_MODEL_DIR = MODELS_DIR / "ptbr-finetuned"
+MODELO_BASE = os.getenv("VISIOVETOR_BASE_MODEL", "google/siglip2-base-patch16-224")
+DIR_MODELO_AJUSTADO = DIR_MODELOS / "ptbr-finetuned"
 
 # ---------------------------------------------------------------------------
 # Dataset (Hugging Face) — Flickr8k com legendas traduzidas para português
 # ---------------------------------------------------------------------------
-HF_DATASET = os.getenv("VISIOVETOR_HF_DATASET", "laicsiifes/flickr8k-pt-br")
-N_TRAIN_IMAGES = int(os.getenv("VISIOVETOR_N_TRAIN", "6000"))
-N_VAL_IMAGES = int(os.getenv("VISIOVETOR_N_VAL", "1000"))
+DATASET_HF = os.getenv("VISIOVETOR_HF_DATASET", "laicsiifes/flickr8k-pt-br")
+N_IMAGENS_TREINO = int(os.getenv("VISIOVETOR_N_TRAIN", "6000"))
+N_IMAGENS_VAL = int(os.getenv("VISIOVETOR_N_VAL", "1000"))
 
 # ---------------------------------------------------------------------------
 # Hardware / inferência
 # ---------------------------------------------------------------------------
 if torch.cuda.is_available():
-    DEVICE = "cuda"
+    DISPOSITIVO = "cuda"
 elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-    DEVICE = "mps"
+    DISPOSITIVO = "mps"
 else:
-    DEVICE = "cpu"
+    DISPOSITIVO = "cpu"
 
-INFERENCE_BATCH_SIZE = 32
-SEED = 42
+TAMANHO_LOTE_INFERENCIA = 32
+SEMENTE = 42
 
 # ---------------------------------------------------------------------------
 # Tags determinísticas (filtro híbrido). Derivadas das legendas por palavra-chave.
 # ---------------------------------------------------------------------------
-TAG_KEYWORDS: dict[str, list[str]] = {
+PALAVRAS_CHAVE_TAGS: dict[str, list[str]] = {
     "cachorro": ["cachorro", "cão", "cães", "cachorros", "filhote"],
     "criança": ["criança", "crianças", "menino", "menina", "meninos", "meninas", "bebê"],
     "água": ["água", "piscina", "lago", "rio", "mar", "oceano", "onda", "ondas"],

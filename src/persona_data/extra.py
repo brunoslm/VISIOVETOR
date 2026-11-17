@@ -8,18 +8,18 @@ perguntar apontam para a mesma resposta, para a busca por similaridade achar a c
 from __future__ import annotations
 
 from src.persona_data.common import (
-    B1, CLIP_B, CLIP_T, F, I1B, I1T, MIN, N_CAP, N_IMG, N_TRAIN, N_VAL, NAME, T1, T5, fmt,
+    B1, CLIP_B, CLIP_T, F, I1B, I1T, MIN, N_LEG, N_IMG, N_TREINO, N_VAL, NOME, T1, T5, fmt,
 )
 
 
-def _err_cut(key: str) -> str:
+def _corte_erro(chave: str) -> str:
     """Quanto do erro do modelo base o ajuste eliminou, em %."""
-    b, t = F.base[key], F.tuned[key]
+    b, t = F.base[chave], F.ajustado[chave]
     return fmt(100 * (t - b) / (100 - b), 0) + "%"
 
 
-_GANHO = fmt(F.tuned["t2i_R@1"] - F.base["t2i_R@1"])
-_CORTE_T1, _CORTE_I1 = _err_cut("t2i_R@1"), _err_cut("i2t_R@1")
+_GANHO = fmt(F.ajustado["t2i_R@1"] - F.base["t2i_R@1"])
+_CORTE_T1, _CORTE_I1 = _corte_erro("t2i_R@1"), _corte_erro("i2t_R@1")
 
 # ---------------------------------------------------------------------------
 IDENTIDADE = [
@@ -60,15 +60,15 @@ CONHECIMENTO = [
      f"Em buscas por texto, o modelo ajustado coloca a imagem certa em 1º lugar em {T1} das vezes e entre as 5 "
      f"primeiras em {T5}. Isso foi medido em {N_VAL} imagens de validação, que não entram no treino."),
     (("Quantas épocas?", "Quantas épocas de treino?", "Treinou por quantas épocas?"),
-     f"Foram {F.epochs} épocas, com {N_TRAIN} imagens de treino, em cerca de {MIN} minutos em CPU. A maior parte "
+     f"Foram {F.epocas} épocas, com {N_TREINO} imagens de treino, em cerca de {MIN} minutos em CPU. A maior parte "
      "do ganho veio já na 1ª época; depois disso o modelo satura."),
     (("Por que 768 dimensões?", "Qual o tamanho do vetor?", "Quantas dimensões tem o vetor?",
       "De que tamanho é o embedding?"),
      f"Cada imagem e cada texto vira um vetor de {F.dim} números. Esse tamanho vem do próprio modelo, o "
-     f"{F.base_model}: é a dimensão do espaço onde ele foi treinado para aproximar imagens e textos parecidos."),
+     f"{F.modelo_base}: é a dimensão do espaço onde ele foi treinado para aproximar imagens e textos parecidos."),
     (("O que é o Flickr8k?", "De onde vieram as imagens?", "Qual é o dataset?", "Que fotos são essas?"),
      f"O Flickr8k é um conjunto público de fotos do Flickr, cada uma com 5 legendas escritas por pessoas. Aqui "
-     f"usamos {N_IMG} imagens com as legendas traduzidas para o português ({N_CAP} no total). São cenas do dia a "
+     f"usamos {N_IMG} imagens com as legendas traduzidas para o português ({N_LEG} no total). São cenas do dia a "
      "dia, com muitas pessoas e cachorros."),
     (("Qual a licença?", "Posso usar comercialmente?", "Posso usar isso no meu produto?", "Dá pra usar numa empresa?",
       "Posso vender isso?"),
@@ -129,7 +129,7 @@ CONCEITOS = [
      "próximos passos para melhorar o fine-tuning do VisioVetor."),
     (("O que é catastrophic forgetting?", "O que é esquecimento catastrófico?", "O modelo pode esquecer o que sabia?"),
      "É quando um modelo, ao ser ajustado com poucos dados, perde o que tinha aprendido antes. Para evitar isso, "
-     f"congelamos a parte de visão e treinamos só as últimas {F.text_layers} camadas do texto, com taxa de "
+     f"congelamos a parte de visão e treinamos só as últimas {F.camadas_texto} camadas do texto, com taxa de "
      "aprendizado baixa."),
     (("Qual a diferença entre R@1 e R@5?", "R@1 e R@10 são diferentes como?", "Por que o R@5 é maior que o R@1?"),
      f"O R@1 conta as buscas em que a imagem certa ficou em 1º lugar; o R@5, as em que ela ficou entre as 5 "

@@ -7,15 +7,15 @@ from pathlib import Path
 
 import gradio as gr
 
-CSS_PATH = Path(__file__).with_name("ui.css")
+CAMINHO_CSS = Path(__file__).with_name("ui.css")
 
 # Paleta zinc + marca sky (Tailwind)
 Z = {50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a",
      600: "#52525b", 700: "#3f3f46", 800: "#27272a", 900: "#18181b", 950: "#09090b"}
 
 
-def build_theme() -> gr.themes.Base:
-    theme = gr.themes.Base(
+def construir_tema() -> gr.themes.Base:
+    tema = gr.themes.Base(
         primary_hue=gr.themes.colors.sky,
         secondary_hue=gr.themes.colors.zinc,
         neutral_hue=gr.themes.colors.zinc,
@@ -24,7 +24,7 @@ def build_theme() -> gr.themes.Base:
         font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
         font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "ui-monospace", "monospace"],
     )
-    return theme.set(
+    return tema.set(
         # fundo e texto
         body_background_fill="#ffffff",
         body_background_fill_dark=Z[950],
@@ -115,26 +115,25 @@ def build_theme() -> gr.themes.Base:
     )
 
 
-def load_css() -> str:
-    return CSS_PATH.read_text(encoding="utf-8")
+def carregar_css() -> str:
+    return CAMINHO_CSS.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
 # Ícones (estilo Lucide, stroke 2, currentColor)
 # ---------------------------------------------------------------------------
-_ICONS = {
+_ICONES = {
     "scan": '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/>',
     "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
     "moon": '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     "arrow-up": '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
-    "monitor": '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
 }
 
 
-def icon(name: str, cls: str = "vv-icon") -> str:
-    return (f'<svg class="{cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+def icone(nome: str, classe: str = "vv-icon") -> str:
+    return (f'<svg class="{classe}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
             f'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
-            f'aria-hidden="true">{_ICONS[name]}</svg>')
+            f'aria-hidden="true">{_ICONES[nome]}</svg>')
 
 
 def num(v: float, dec: int = 1) -> str:
@@ -146,34 +145,34 @@ def num(v: float, dec: int = 1) -> str:
 # ---------------------------------------------------------------------------
 # Blocos de HTML
 # ---------------------------------------------------------------------------
-def hero_html(n_images: int, n_captions: int, n_tags: int, device: str, gain_r1: float | None,
-              dim: int, model_name: str) -> str:
-    theme_opts = "".join(
+def html_destaque(n_imagens: int, n_legendas: int, n_tags: int, dispositivo: str, ganho_r1: float | None,
+              dim: int, nome_modelo: str) -> str:
+    opcoes_tema = "".join(
         f'<label class="vv-seg" title="{t}"><input type="radio" name="vv-tema" value="{v}">'
-        f'{icon(ic)}<span class="vv-sr">{t}</span></label>'
-        for v, t, ic in (("claro", "Claro", "sun"), ("escuro", "Escuro", "moon"), ("sistema", "Sistema", "monitor"))
+        f'{icone(ic)}<span class="vv-sr">{t}</span></label>'
+        for v, t, ic in (("claro", "Claro", "sun"), ("escuro", "Escuro", "moon"))
     )
-    stats = [("Imagens", num(n_images, 0)), ("Legendas", num(n_captions, 0)), ("Tags", str(n_tags)),
-             ("Dispositivo", device.upper())]
-    if gain_r1 is not None:
-        stats.insert(0, ("Ganho R@1 com fine-tuning", f"{'+' if gain_r1 >= 0 else ''}{num(gain_r1)} pts"))
-    stats_html = "".join(f'<div class="vv-stat"><dt>{escape(k)}</dt><dd>{escape(v)}</dd></div>' for k, v in stats)
+    estatisticas = [("Imagens", num(n_imagens, 0)), ("Legendas", num(n_legendas, 0)), ("Tags", str(n_tags)),
+             ("Dispositivo", dispositivo.upper())]
+    if ganho_r1 is not None:
+        estatisticas.insert(0, ("Ganho R@1 com fine-tuning", f"{'+' if ganho_r1 >= 0 else ''}{num(ganho_r1)} pts"))
+    html_estatisticas = "".join(f'<div class="vv-stat"><dt>{escape(k)}</dt><dd>{escape(v)}</dd></div>' for k, v in estatisticas)
     return f"""
 <header class="vv-hero">
   <div class="vv-topbar">
-    <span class="vv-brand"><span class="vv-logo">{icon("scan")}</span>VisioVetor</span>
-    <div class="vv-theme" role="radiogroup" aria-label="Tema">{theme_opts}</div>
+    <button type="button" class="vv-brand vv-brand-btn" data-vv-top aria-label="VisioVetor: voltar ao topo" title="Voltar ao topo"><span class="vv-logo">{icone("scan")}</span>VisioVetor</button>
+    <div class="vv-theme" role="radiogroup" aria-label="Tema">{opcoes_tema}</div>
   </div>
   <p class="vv-eyebrow"><span class="vv-dot vv-sky"></span>Busca semântica multimodal</p>
   <h1>Encontre imagens descrevendo o que você procura.</h1>
   <p class="vv-lead">Imagens e textos no mesmo espaço vetorial de {dim} dimensões, com
-  <code class="vv-code">{escape(model_name)}</code> ajustado para português. Sem tags manuais: a busca entende a descrição.</p>
-  <dl class="vv-stats">{stats_html}</dl>
-  {how_it_works_html()}
+  <code class="vv-code">{escape(nome_modelo)}</code> ajustado para português. Sem tags manuais: a busca entende a descrição.</p>
+  <dl class="vv-stats">{html_estatisticas}</dl>
+  {html_como_funciona()}
 </header>"""
 
 
-_STEPS = (
+_PASSOS = (
     ("sky", "Escolha o modo",
      "Use as abas abaixo: buscar por texto, por imagem parecida, descrever uma foto ou comparar modelos."),
     ("violet", "Descreva ou envie",
@@ -183,37 +182,42 @@ _STEPS = (
 )
 
 
-def how_it_works_html() -> str:
+def html_como_funciona() -> str:
     """Faixa 'Como funciona': 3 passos numerados ligados por setas."""
-    arrow = ('<li class="vv-step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" '
+    seta = ('<li class="vv-step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" '
              'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
              '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></li>')
-    items = []
-    for i, (color, title, desc) in enumerate(_STEPS, 1):
+    itens = []
+    for i, (cor, titulo, desc) in enumerate(_PASSOS, 1):
         if i > 1:
-            items.append(arrow)
-        items.append(f"""
+            itens.append(seta)
+        itens.append(f"""
     <li class="vv-step">
-      <span class="vv-step-num vv-step-{color}">{i}</span>
-      <div><p class="vv-step-title">{escape(title)}</p><p class="vv-step-desc">{escape(desc)}</p></div>
+      <span class="vv-step-num vv-step-{cor}">{i}</span>
+      <div><p class="vv-step-title">{escape(titulo)}</p><p class="vv-step-desc">{escape(desc)}</p></div>
     </li>""")
     return f"""
   <section class="vv-how" aria-labelledby="vv-how-title">
     <p class="vv-eyebrow" id="vv-how-title"><span class="vv-dot vv-violet"></span>Como funciona</p>
-    <ol class="vv-steps">{''.join(items)}</ol>
+    <ol class="vv-steps">{''.join(itens)}</ol>
   </section>"""
 
 
-# Liga o seletor Claro / Escuro / Sistema. "Sistema" é o padrão (nada salvo).
-THEME_JS = r"""
+# Liga o seletor Claro / Escuro. Sem escolha salva, segue o tema do sistema.
+JS_TEMA = r"""
+// abre sempre no início da página (o navegador tenta restaurar a rolagem anterior)
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
 const KEY = 'vv-tema';
 const mq = window.matchMedia('(prefers-color-scheme: dark)');
-const ler = () => { try { return localStorage.getItem(KEY) || 'sistema'; } catch (e) { return 'sistema'; } };
-const salvar = (v) => { try { v === 'sistema' ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, v); } catch (e) {} };
+const doSistema = () => (mq.matches ? 'escuro' : 'claro');
+const salvo = () => { try { const v = localStorage.getItem(KEY); return v === 'claro' || v === 'escuro' ? v : null; } catch (e) { return null; } };
+const ler = () => salvo() || doSistema();
+const salvar = (v) => { try { localStorage.setItem(KEY, v); } catch (e) {} };
 const aplicar = (v) => {
   const b = document.body;
   b.classList.add('vv-sem-transicao');
-  b.classList.toggle('dark', v === 'escuro' || (v === 'sistema' && mq.matches));
+  b.classList.toggle('dark', v === 'escuro');
   requestAnimationFrame(() => requestAnimationFrame(() => b.classList.remove('vv-sem-transicao')));
 };
 const radios = element.querySelectorAll('input[name="vv-tema"]');
@@ -222,64 +226,71 @@ radios.forEach((r) => {
   r.checked = r.value === atual;
   r.addEventListener('change', () => { salvar(r.value); aplicar(r.value); });
 });
-mq.addEventListener('change', () => { if (ler() === 'sistema') aplicar('sistema'); });
+// sem escolha salva, segue o tema do sistema (e marca o botão correspondente)
+mq.addEventListener('change', () => {
+  if (salvo()) return;
+  const v = doSistema();
+  radios.forEach((r) => { r.checked = r.value === v; });
+  aplicar(v);
+});
 aplicar(atual);
+element.querySelectorAll('[data-vv-top]').forEach((b) => b.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' })));
 """
 
 
-def section_html(color: str, eyebrow: str, title: str, desc: str) -> str:
+def html_secao(cor: str, sobretitulo: str, titulo: str, desc: str) -> str:
     return f"""
 <div class="vv-section">
-  <p class="vv-eyebrow"><span class="vv-dot vv-{color}"></span>{escape(eyebrow)}</p>
-  <h2>{escape(title)}</h2>
+  <p class="vv-eyebrow"><span class="vv-dot vv-{cor}"></span>{escape(sobretitulo)}</p>
+  <h2>{escape(titulo)}</h2>
   <p class="vv-desc">{escape(desc)}</p>
 </div>"""
 
 
-_METRIC_NAMES = {"t2i": "Texto → Imagem", "i2t": "Imagem → Texto"}
+_NOMES_METRICAS = {"t2i": "Texto → Imagem", "i2t": "Imagem → Texto"}
 
 
-def metrics_html(m: dict | None) -> str:
+def html_metricas(m: dict | None) -> str:
     if not m:
         return """
 <div class="vv-empty">
   <p class="vv-empty-title">Ainda não há modelo ajustado</p>
   <p>Rode <code>python scripts/finetune.py</code> para treinar e comparar com o modelo base.</p>
 </div>"""
-    rows = []
-    for key, base in m["baseline"].items():
-        ft = m["best"][key]
-        kind, k = key.split("_")
-        rows.append(f"""
+    linhas = []
+    for chave, base in m["baseline"].items():
+        ajust = m["best"][chave]
+        tipo, k = chave.split("_")
+        linhas.append(f"""
 <div class="vv-metric">
   <div class="vv-metric-head">
-    <span>{_METRIC_NAMES.get(kind, kind)} <span class="vv-muted">· {k}</span></span>
-    <span class="vv-badge {'vv-badge-teal' if ft >= base else 'vv-badge-rose'}"><span class="vv-dot {'vv-teal' if ft >= base else 'vv-rose'}"></span>{'+' if ft >= base else ''}{num(ft - base)}</span>
+    <span>{_NOMES_METRICAS.get(tipo, tipo)} <span class="vv-muted">· {k}</span></span>
+    <span class="vv-badge {'vv-badge-teal' if ajust >= base else 'vv-badge-rose'}"><span class="vv-dot {'vv-teal' if ajust >= base else 'vv-rose'}"></span>{'+' if ajust >= base else ''}{num(ajust - base)}</span>
   </div>
   <div class="vv-bar-row"><span class="vv-bar-label">Base</span>
     <progress class="vv-bar vv-bar-base" max="100" value="{base:.1f}"></progress><span class="vv-num">{num(base)}%</span></div>
   <div class="vv-bar-row"><span class="vv-bar-label">Ajustado</span>
-    <progress class="vv-bar vv-bar-ft" max="100" value="{ft:.1f}"></progress><span class="vv-num">{num(ft)}%</span></div>
+    <progress class="vv-bar vv-bar-ft" max="100" value="{ajust:.1f}"></progress><span class="vv-num">{num(ajust)}%</span></div>
 </div>""")
     return f"""
 <div class="vv-metrics-card">
   <p class="vv-metrics-meta">{num(m['n_train'], 0)} imagens de treino · {num(m['n_val'], 0)} de validação ·
   melhor época {m['best_epoch']} · {num(m['train_seconds'] / 60)} min de treino.
   R@K é a porcentagem de buscas em que o item certo aparece entre os K primeiros.</p>
-  <div class="vv-metrics-grid">{''.join(rows)}</div>
+  <div class="vv-metrics-grid">{''.join(linhas)}</div>
 </div>"""
 
 
 # Mesmo avatar dos balões do chat (src/assets/jeffrey.svg), embutido no HTML
 JEFF_SVG = (Path(__file__).with_name("assets") / "jeffrey.svg").read_text(encoding="utf-8").strip()
 
-CHAT_HEADER = f"""
+CABECALHO_CHAT = f"""
 <div class="vv-chat-head">
   <span class="vv-chat-avatar" aria-hidden="true">{JEFF_SVG}</span>
   <div><p class="vv-chat-name">Jeffrey</p><p class="vv-chat-status">Assistente do VisioVetor</p></div>
 </div>"""
 
-_CHAT_INTRO = {
+_INTRO_CHAT = {
     "texto": "Pergunte por que uma foto ficou em 1º, o que o score significa ou como refinar a busca.",
     "imagem": "Pergunte por que essas fotos são parecidas ou peça para ele comentar uma posição específica.",
     "descrever": "Pergunte como ler a classificação zero-shot ou por que uma legenda ficou mais perto da foto.",
@@ -287,11 +298,11 @@ _CHAT_INTRO = {
 }
 
 
-def chat_intro_html(kind: str) -> str:
-    return section_html("sky", "Assistente", "Converse com o Jeffrey", _CHAT_INTRO.get(kind, _CHAT_INTRO["texto"]))
+def html_intro_chat(tipo: str) -> str:
+    return html_secao("sky", "Assistente", "Converse com o Jeffrey", _INTRO_CHAT.get(tipo, _INTRO_CHAT["texto"]))
 
 
-_FOOTER_MODES = (
+_MODOS_RODAPE = (
     ("sky", "Texto → Imagem", "Busca por descrição"),
     ("violet", "Imagem → Imagem", "Similaridade visual"),
     ("teal", "Imagem → Texto", "Descrição automática"),
@@ -299,15 +310,15 @@ _FOOTER_MODES = (
 )
 
 
-def footer_html(model_name: str, dim: int, device: str, n_images: int) -> str:
-    modes = "".join(
-        f'<li><button type="button" class="vv-foot-link" data-vv-tab="{escape(tab)}">'
-        f'<span class="vv-dot vv-{c}"></span><span>{escape(tab)}</span>'
+def html_rodape(nome_modelo: str, dim: int, dispositivo: str, n_imagens: int) -> str:
+    modos = "".join(
+        f'<li><button type="button" class="vv-foot-link" data-vv-tab="{escape(aba)}">'
+        f'<span class="vv-dot vv-{c}"></span><span>{escape(aba)}</span>'
         f'<span class="vv-muted">· {escape(desc)}</span></button></li>'
-        for c, tab, desc in _FOOTER_MODES
+        for c, aba, desc in _MODOS_RODAPE
     )
-    tech = "".join(f"<li>{t}</li>" for t in (
-        f'<code class="vv-code">{escape(model_name)}</code>',
+    tecnologias = "".join(f"<li>{t}</li>" for t in (
+        f'<code class="vv-code">{escape(nome_modelo)}</code>',
         "PyTorch + Hugging Face Transformers",
         "Busca vetorial em NumPy (Q · Vᵀ)",
         "Interface em Gradio",
@@ -316,30 +327,30 @@ def footer_html(model_name: str, dim: int, device: str, n_images: int) -> str:
 <footer class="vv-footer">
   <div class="vv-foot-grid">
     <div class="vv-foot-brand">
-      <span class="vv-brand"><span class="vv-logo">{icon("scan")}</span>VisioVetor</span>
+      <button type="button" class="vv-brand vv-brand-btn" data-vv-top aria-label="VisioVetor: voltar ao topo" title="Voltar ao topo"><span class="vv-logo">{icone("scan")}</span>VisioVetor</button>
       <p>Busca semântica multimodal em português: imagens e textos no mesmo espaço vetorial,
       comparados por similaridade de cosseno.</p>
-      <p class="vv-foot-status"><span class="vv-dot vv-teal"></span>Rodando em {escape(device.upper())} ·
-      {num(n_images, 0)} imagens · {dim} dimensões</p>
+      <p class="vv-foot-status"><span class="vv-dot vv-teal"></span>Rodando em {escape(dispositivo.upper())} ·
+      {num(n_imagens, 0)} imagens · {dim} dimensões</p>
     </div>
     <nav aria-label="Modos de busca">
       <p class="vv-foot-title">Modos</p>
-      <ul>{modes}</ul>
+      <ul>{modos}</ul>
     </nav>
     <div>
       <p class="vv-foot-title">Tecnologia</p>
-      <ul class="vv-foot-tech">{tech}</ul>
+      <ul class="vv-foot-tech">{tecnologias}</ul>
     </div>
   </div>
   <div class="vv-foot-bar">
     <span>Similaridade de cosseno sobre vetores normalizados: <span class="vv-foot-math">sim(q, v) = q̂ · v̂</span></span>
-    <button type="button" class="vv-foot-top" data-vv-top>{icon("arrow-up")}Voltar ao topo</button>
+    <button type="button" class="vv-foot-top" data-vv-top>{icone("arrow-up")}Voltar ao topo</button>
   </div>
 </footer>"""
 
 
 # Links do rodapé: troca de aba e volta ao topo.
-FOOTER_JS = r"""
+JS_RODAPE = r"""
 element.querySelectorAll('[data-vv-tab]').forEach((b) => b.addEventListener('click', () => {
   const tab = [...document.querySelectorAll('.vv-tabs [role="tab"]')]
     .find((t) => t.textContent.trim() === b.dataset.vvTab);
@@ -347,5 +358,5 @@ element.querySelectorAll('[data-vv-tab]').forEach((b) => b.addEventListener('cli
   tab.click();
   document.querySelector('.vv-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }));
-element.querySelector('[data-vv-top]')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+element.querySelectorAll('[data-vv-top]').forEach((b) => b.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' })));
 """

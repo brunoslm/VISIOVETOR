@@ -10,7 +10,7 @@ Funcionalidades:
 * **Imagem → Imagem**: busca por similaridade visual.
 * **Imagem → Texto**: recupera as legendas mais próximas do catálogo e faz **classificação zero-shot** com rótulos livres.
 * **Base × Fine-tuned**: compara os dois modelos lado a lado, com as métricas do treino.
-* Interface com tema **Claro / Escuro / Sistema** (seletor no topo, escolha salva no navegador) e layout responsivo.
+* Interface com tema **Claro / Escuro** (seletor no topo, escolha salva no navegador; sem escolha, segue o sistema) e layout responsivo.
 
 ---
 

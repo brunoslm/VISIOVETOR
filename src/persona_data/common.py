@@ -6,103 +6,103 @@ import json
 import re
 from pathlib import Path
 
-from src.persona import NAME, SYSTEM_PROMPT, Facts, fmt, load_facts
+from src.persona import NOME, PROMPT_SISTEMA, Fatos, fmt, carregar_fatos
 
-F: Facts = load_facts()
+F: Fatos = carregar_fatos()
 
 # atalhos dos fatos, já formatados em pt-BR
-T1, T5 = F.r("tuned", "t2i_R@1"), F.r("tuned", "t2i_R@5")
+T1, T5 = F.r("ajustado", "t2i_R@1"), F.r("ajustado", "t2i_R@5")
 B1, B5 = F.r("base", "t2i_R@1"), F.r("base", "t2i_R@5")
-I1B, I1T = F.r("base", "i2t_R@1"), F.r("tuned", "i2t_R@1")
-GAIN_T1 = F.gain("t2i_R@1")
+I1B, I1T = F.r("base", "i2t_R@1"), F.r("ajustado", "i2t_R@1")
+GANHO_T1 = F.ganho("t2i_R@1")
 TAGS = ", ".join(F.tags)
-N_IMG, N_CAP = fmt(F.n_images, 0), fmt(F.n_captions, 0)
-N_TRAIN, N_VAL = fmt(F.n_train, 0), fmt(F.n_val, 0)
-MIN = fmt(F.train_minutes)
-CLIP_B, CLIP_T = fmt(F.clip_base_t2i_r1) + "%", fmt(F.clip_tuned_t2i_r1) + "%"
+N_IMG, N_LEG = fmt(F.n_imagens, 0), fmt(F.n_legendas, 0)
+N_TREINO, N_VAL = fmt(F.n_treino, 0), fmt(F.n_val, 0)
+MIN = fmt(F.minutos_treino)
+CLIP_B, CLIP_T = fmt(F.clip_base_t2i_r1) + "%", fmt(F.clip_ajustado_t2i_r1) + "%"
 
 
 # ---------------------------------------------------------------------------
 # formatos
 # ---------------------------------------------------------------------------
-def chat(*turns: str) -> dict:
+def chat(*turnos: str) -> dict:
     """chat("usuário", "assistente", "usuário", "assistente", ...) -> {"messages": [...]}"""
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
-    for i, t in enumerate(turns):
+    msgs = [{"role": "system", "content": PROMPT_SISTEMA}]
+    for i, t in enumerate(turnos):
         msgs.append({"role": "user" if i % 2 == 0 else "assistant", "content": t})
     return {"messages": msgs}
 
 
-def variants(pairs: list[tuple[str | tuple[str, ...], str]]) -> list[dict]:
+def variantes(pares: list[tuple[str | tuple[str, ...], str]]) -> list[dict]:
     """[(("pergunta", "outra forma"), "resposta")] -> um exemplo de chat por forma de perguntar."""
-    out = []
-    for users, answer in pairs:
-        for u in (users if isinstance(users, tuple) else (users,)):
-            out.append(chat(u, answer))
-    return out
+    exemplos = []
+    for usuarios, resposta in pares:
+        for u in (usuarios if isinstance(usuarios, tuple) else (usuarios,)):
+            exemplos.append(chat(u, resposta))
+    return exemplos
 
 
-def instr(instruction: str, input_: str, output: str) -> dict:
-    return {"system": SYSTEM_PROMPT, "instruction": instruction, "input": input_, "output": output}
+def instr(instrucao: str, entrada: str, saida: str) -> dict:
+    return {"system": PROMPT_SISTEMA, "instruction": instrucao, "input": entrada, "output": saida}
 
 
-def pref(user: str | list[dict], chosen: str, rejected: str) -> dict:
-    prompt = user if isinstance(user, list) else [{"role": "system", "content": SYSTEM_PROMPT},
-                                                  {"role": "user", "content": user}]
+def pref(usuario: str | list[dict], escolhida: str, rejeitada: str) -> dict:
+    prompt = usuario if isinstance(usuario, list) else [{"role": "system", "content": PROMPT_SISTEMA},
+                                                  {"role": "user", "content": usuario}]
     return {"prompt": prompt,
-            "chosen": [{"role": "assistant", "content": chosen}],
-            "rejected": [{"role": "assistant", "content": rejected}]}
+            "chosen": [{"role": "assistant", "content": escolhida}],
+            "rejected": [{"role": "assistant", "content": rejeitada}]}
 
 
-def instr_to_chat(r: dict) -> dict:
-    user = r["instruction"] + (f"\n\n{r['input']}" if r["input"] else "")
-    return chat(user, r["output"])
+def instr_para_chat(r: dict) -> dict:
+    usuario = r["instruction"] + (f"\n\n{r['input']}" if r["input"] else "")
+    return chat(usuario, r["output"])
 
 
 # ---------------------------------------------------------------------------
 # validação
 # ---------------------------------------------------------------------------
 EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
-WRONG_NAMES = ("James", "James.IA")
+NOMES_ERRADOS = ("James", "James.IA")
 
 
-def check_assistant_text(text: str, where: str) -> None:
-    assert isinstance(text, str) and text.strip(), f"{where}: resposta vazia"
-    assert not any(n in text for n in WRONG_NAMES), f"{where}: nome errado: {text[:70]}"
-    assert not EMOJI.search(text), f"{where}: emoji: {text[:70]}"
-    assert "{" not in text and "}" not in text, f"{where}: placeholder não resolvido: {text[:70]}"
+def validar_texto_assistente(texto: str, onde: str) -> None:
+    assert isinstance(texto, str) and texto.strip(), f"{onde}: resposta vazia"
+    assert not any(n in texto for n in NOMES_ERRADOS), f"{onde}: nome errado: {texto[:70]}"
+    assert not EMOJI.search(texto), f"{onde}: emoji: {texto[:70]}"
+    assert "{" not in texto and "}" not in texto, f"{onde}: placeholder não resolvido: {texto[:70]}"
 
 
-def check_chat(rec: dict, where: str) -> None:
-    msgs = rec["messages"]
-    assert msgs[0]["role"] == "system" and msgs[0]["content"] == SYSTEM_PROMPT, f"{where}: system ausente"
-    roles = [m["role"] for m in msgs[1:]]
-    assert roles and roles[-1] == "assistant", f"{where}: deve terminar com o assistente"
-    assert all(r == ("user" if i % 2 == 0 else "assistant") for i, r in enumerate(roles)), f"{where}: ordem inválida"
+def validar_chat(reg: dict, onde: str) -> None:
+    msgs = reg["messages"]
+    assert msgs[0]["role"] == "system" and msgs[0]["content"] == PROMPT_SISTEMA, f"{onde}: system ausente"
+    papeis = [m["role"] for m in msgs[1:]]
+    assert papeis and papeis[-1] == "assistant", f"{onde}: deve terminar com o assistente"
+    assert all(r == ("user" if i % 2 == 0 else "assistant") for i, r in enumerate(papeis)), f"{onde}: ordem inválida"
     for m in msgs[1:]:
-        assert isinstance(m["content"], str) and m["content"].strip(), f"{where}: mensagem vazia"
+        assert isinstance(m["content"], str) and m["content"].strip(), f"{onde}: mensagem vazia"
         if m["role"] == "assistant":
-            check_assistant_text(m["content"], where)
+            validar_texto_assistente(m["content"], onde)
 
 
-def check_pref(rec: dict, where: str) -> None:
-    check_chat({"messages": rec["prompt"] + rec["chosen"]}, where)
-    assert rec["chosen"][0]["content"] != rec["rejected"][0]["content"], f"{where}: chosen == rejected"
-    assert rec["rejected"][0]["content"].strip(), f"{where}: rejected vazio"
+def validar_pref(reg: dict, onde: str) -> None:
+    validar_chat({"messages": reg["prompt"] + reg["chosen"]}, onde)
+    assert reg["chosen"][0]["content"] != reg["rejected"][0]["content"], f"{onde}: chosen == rejected"
+    assert reg["rejected"][0]["content"].strip(), f"{onde}: rejected vazio"
 
 
-def check_instr(rec: dict, where: str) -> None:
-    check_chat(instr_to_chat(rec), where)
+def validar_instr(reg: dict, onde: str) -> None:
+    validar_chat(instr_para_chat(reg), onde)
 
 
-def write_jsonl(path: Path, rows: list[dict]) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        for r in rows:
+def escrever_jsonl(caminho: Path, linhas: list[dict]) -> None:
+    with open(caminho, "w", encoding="utf-8") as f:
+        for r in linhas:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
 
 __all__ = [
-    "F", "NAME", "SYSTEM_PROMPT", "fmt", "T1", "T5", "B1", "B5", "I1B", "I1T", "GAIN_T1", "TAGS", "N_IMG", "N_CAP",
-    "N_TRAIN", "N_VAL", "MIN", "CLIP_B", "CLIP_T", "chat", "variants", "instr", "pref", "instr_to_chat",
-    "check_chat", "check_pref", "check_instr", "check_assistant_text", "write_jsonl",
+    "F", "NOME", "PROMPT_SISTEMA", "fmt", "T1", "T5", "B1", "B5", "I1B", "I1T", "GANHO_T1", "TAGS", "N_IMG", "N_LEG",
+    "N_TREINO", "N_VAL", "MIN", "CLIP_B", "CLIP_T", "chat", "variantes", "instr", "pref", "instr_para_chat",
+    "validar_chat", "validar_pref", "validar_instr", "validar_texto_assistente", "escrever_jsonl",
 ]

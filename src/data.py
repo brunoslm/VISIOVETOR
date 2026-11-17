@@ -10,28 +10,28 @@ from pathlib import Path
 import config
 
 
-def _normalize(text: str) -> str:
-    return unicodedata.normalize("NFC", text.lower())
+def _normalizar(texto: str) -> str:
+    return unicodedata.normalize("NFC", texto.lower())
 
 
-def extract_tags(captions: list[str]) -> list[str]:
+def extrair_tags(legendas: list[str]) -> list[str]:
     """Atribui tags por palavra-chave (match de palavra inteira) nas legendas."""
-    words = set(re.findall(r"\w+", _normalize(" ".join(captions))))
-    return sorted(tag for tag, kws in config.TAG_KEYWORDS.items() if words & {_normalize(k) for k in kws})
+    palavras = set(re.findall(r"\w+", _normalizar(" ".join(legendas))))
+    return sorted(tag for tag, pcs in config.PALAVRAS_CHAVE_TAGS.items() if palavras & {_normalizar(k) for k in pcs})
 
 
-def load_records(split: str | None = None, path: Path = config.CAPTIONS_FILE) -> list[dict]:
+def carregar_registros(divisao: str | None = None, caminho: Path = config.ARQUIVO_LEGENDAS) -> list[dict]:
     """Cada registro: {"image": caminho relativo a data/raw, "captions": [...], "tags": [...], "split": ...}."""
-    if not path.exists():
+    if not caminho.exists():
         raise FileNotFoundError(
-            f"{path} não encontrado. Rode primeiro: python scripts/prepare_data.py"
+            f"{caminho} não encontrado. Rode primeiro: python scripts/prepare_data.py"
         )
-    records = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                rec = json.loads(line)
-                if split is None or rec.get("split") == split:
-                    rec["path"] = str(config.RAW_DIR / rec["image"])
-                    records.append(rec)
-    return records
+    registros = []
+    with open(caminho, encoding="utf-8") as f:
+        for linha in f:
+            if linha.strip():
+                reg = json.loads(linha)
+                if divisao is None or reg.get("split") == divisao:
+                    reg["path"] = str(config.DIR_BRUTOS / reg["image"])
+                    registros.append(reg)
+    return registros

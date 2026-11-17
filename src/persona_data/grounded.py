@@ -21,7 +21,7 @@ from src import jeffrey
 from src.persona import fmt
 from src.persona_data.common import F, N_IMG, chat
 
-OPENERS_EXPLICA = ["Claro, vamos olhar juntos.", "Com prazer!", "Boa busca!", "Vamos lá.", "Claro!"]
+ABERTURAS_EXPLICA = ["Claro, vamos olhar juntos.", "Com prazer!", "Boa busca!", "Vamos lá.", "Claro!"]
 PEDIDOS = ["Pode me explicar esses resultados?", "O que você acha desses resultados?", "Esses resultados fazem sentido?",
            "Me ajuda a interpretar isso?", "O que esses scores querem dizer?", "Isso ficou bom?"]
 PEDIDOS_PASSOS = ["O que você fez nessa busca?", "Como você chegou nesses resultados?",
@@ -29,148 +29,148 @@ PEDIDOS_PASSOS = ["O que você fez nessa busca?", "Como você chegou nesses resu
 
 
 @dataclass
-class Index:
-    img_vecs: np.ndarray
-    img_meta: list[dict]
-    cap_vecs: np.ndarray
-    cap_meta: list[dict]
+class Indice:
+    vetores_img: np.ndarray
+    meta_img: list[dict]
+    vetores_leg: np.ndarray
+    meta_leg: list[dict]
 
     @property
-    def image_pos(self) -> dict[str, int]:
-        return {m["image"]: i for i, m in enumerate(self.img_meta)}
+    def pos_imagem(self) -> dict[str, int]:
+        return {m["image"]: i for i, m in enumerate(self.meta_img)}
 
 
-def load_index(slug: str) -> Index | None:
-    p = config.EMBEDDINGS_DIR / slug
-    files = [Path(f"{p}__{k}.{e}") for k in ("images", "captions") for e in ("npy", "json")]
-    if not all(f.exists() for f in files):
+def carregar_indice(slug: str) -> Indice | None:
+    p = config.DIR_EMBEDDINGS / slug
+    arquivos = [Path(f"{p}__{k}.{e}") for k in ("images", "captions") for e in ("npy", "json")]
+    if not all(f.exists() for f in arquivos):
         return None
-    return Index(
-        img_vecs=np.load(files[0]), img_meta=json.loads(files[1].read_text(encoding="utf-8")),
-        cap_vecs=np.load(files[2]), cap_meta=json.loads(files[3].read_text(encoding="utf-8")),
+    return Indice(
+        vetores_img=np.load(arquivos[0]), meta_img=json.loads(arquivos[1].read_text(encoding="utf-8")),
+        vetores_leg=np.load(arquivos[2]), meta_leg=json.loads(arquivos[3].read_text(encoding="utf-8")),
     )
 
 
-def _q(caption: str) -> str:
+def _q(legenda: str) -> str:
     """Legenda -> texto de busca (minúscula no início, sem ponto final)."""
-    c = caption.strip().rstrip(".").strip()
+    c = legenda.strip().rstrip(".").strip()
     return c[:1].lower() + c[1:]
 
 
-def _results_block(res: list[tuple[float, str, list[str]]], label: str = "score") -> str:
+def _bloco_resultados(res: list[tuple[float, str, list[str]]], rotulo: str = "score") -> str:
     return "\n".join(
-        f"{k}. {label} {fmt(s, 3)} — \"{c.strip().rstrip('.')}\"" + (f" [tags: {', '.join(t)}]" if t else "")
+        f"{k}. {rotulo} {fmt(s, 3)} — \"{c.strip().rstrip('.')}\"" + (f" [tags: {', '.join(t)}]" if t else "")
         for k, (s, c, t) in enumerate(res, 1)
     )
 
 
-def _val_queries(idx: Index, rng: random.Random, n: int, min_w: int = 4, max_w: int = 14) -> list[int]:
-    val_images = {m["image"] for m in idx.img_meta if m.get("split") == "val"}
-    cands = [i for i, m in enumerate(idx.cap_meta)
-             if m["image"] in val_images and min_w <= len(m["caption"].split()) <= max_w]
-    return rng.sample(cands, min(n, len(cands)))
+def _consultas_val(idx: Indice, rng: random.Random, n: int, min_pal: int = 4, max_pal: int = 14) -> list[int]:
+    imagens_val = {m["image"] for m in idx.meta_img if m.get("split") == "val"}
+    candidatas = [i for i, m in enumerate(idx.meta_leg)
+             if m["image"] in imagens_val and min_pal <= len(m["caption"].split()) <= max_pal]
+    return rng.sample(candidatas, min(n, len(candidatas)))
 
 
-def _top(idx: Index, vec: np.ndarray, k: int, exclude: set[int] | None = None) -> list[int]:
-    scores = idx.img_vecs @ vec
-    order = np.argsort(-scores)
-    return [int(i) for i in order if not exclude or int(i) not in exclude][:k]
+def _top(idx: Indice, vet: np.ndarray, k: int, excluir: set[int] | None = None) -> list[int]:
+    scores = idx.vetores_img @ vet
+    ordem = np.argsort(-scores)
+    return [int(i) for i in ordem if not excluir or int(i) not in excluir][:k]
 
 
 # ---------------------------------------------------------------------------
 # Texto -> Imagem: explicação de resultados (e "o que eu fiz")
 # ---------------------------------------------------------------------------
-def explicacoes(idx: Index, n: int, rng: random.Random, model_name: str) -> list[dict]:
-    out = []
-    for ci in _val_queries(idx, rng, n):
-        query = _q(idx.cap_meta[ci]["caption"])
-        scores = idx.img_vecs @ idx.cap_vecs[ci]
+def explicacoes(idx: Indice, n: int, rng: random.Random, nome_modelo: str) -> list[dict]:
+    saida = []
+    for ci in _consultas_val(idx, rng, n):
+        consulta = _q(idx.meta_leg[ci]["caption"])
+        scores = idx.vetores_img @ idx.vetores_leg[ci]
         k = rng.choice([3, 4, 5, 5, 6])
-        top = _top(idx, idx.cap_vecs[ci], k)
-        res = [(float(scores[i]), idx.img_meta[i]["caption"], idx.img_meta[i].get("tags", [])) for i in top]
+        topo = _top(idx, idx.vetores_leg[ci], k)
+        res = [(float(scores[i]), idx.meta_img[i]["caption"], idx.meta_img[i].get("tags", [])) for i in topo]
         com_passos = rng.random() < 0.35
         pedido = rng.choice(PEDIDOS_PASSOS if com_passos else PEDIDOS)
-        user = f"Busquei por \"{query}\" e estes foram os {k} primeiros resultados:\n{_results_block(res)}\n\n{pedido}"
-        nar = jeffrey.explain_text_search(query, res, model_name=model_name, dim=F.dim, n_catalog=F.n_images,
-                                          openers=OPENERS_EXPLICA)
-        out.append(chat(user, nar.text(with_steps=com_passos)))
-    return out
+        usuario = f"Busquei por \"{consulta}\" e estes foram os {k} primeiros resultados:\n{_bloco_resultados(res)}\n\n{pedido}"
+        nar = jeffrey.explicar_busca_texto(consulta, res, nome_modelo=nome_modelo, dim=F.dim, n_catalogo=F.n_imagens,
+                                          aberturas=ABERTURAS_EXPLICA)
+        saida.append(chat(usuario, nar.texto(com_passos=com_passos)))
+    return saida
 
 
 # ---------------------------------------------------------------------------
 # Imagem -> Imagem
 # ---------------------------------------------------------------------------
-def imagem_para_imagem(idx: Index, n: int, rng: random.Random, model_name: str) -> list[dict]:
-    val = [i for i, m in enumerate(idx.img_meta) if m.get("split") == "val"]
-    out = []
+def imagem_para_imagem(idx: Indice, n: int, rng: random.Random, nome_modelo: str) -> list[dict]:
+    val = [i for i, m in enumerate(idx.meta_img) if m.get("split") == "val"]
+    saida = []
     for qi in rng.sample(val, min(n, len(val))):
         k = rng.choice([4, 5, 6])
-        top = _top(idx, idx.img_vecs[qi], k, exclude={qi})  # simula uma foto nova: tira a própria imagem
-        scores = idx.img_vecs @ idx.img_vecs[qi]
-        res = [(float(scores[i]), idx.img_meta[i]["caption"], idx.img_meta[i].get("tags", [])) for i in top]
-        foto = _q(idx.img_meta[qi]["caption"])
-        user = (f"Enviei uma foto ({foto}) na busca por imagens parecidas e o sistema trouxe:\n"
-                f"{_results_block(res, 'similaridade')}\n\n{rng.choice(PEDIDOS)}")
-        nar = jeffrey.explain_image_search(res, model_name=model_name, dim=F.dim, n_catalog=F.n_images,
-                                           openers=OPENERS_EXPLICA)
-        out.append(chat(user, nar.text(with_steps=False)))
-    return out
+        topo = _top(idx, idx.vetores_img[qi], k, excluir={qi})  # simula uma foto nova: tira a própria imagem
+        scores = idx.vetores_img @ idx.vetores_img[qi]
+        res = [(float(scores[i]), idx.meta_img[i]["caption"], idx.meta_img[i].get("tags", [])) for i in topo]
+        foto = _q(idx.meta_img[qi]["caption"])
+        usuario = (f"Enviei uma foto ({foto}) na busca por imagens parecidas e o sistema trouxe:\n"
+                f"{_bloco_resultados(res, 'similaridade')}\n\n{rng.choice(PEDIDOS)}")
+        nar = jeffrey.explicar_busca_imagem(res, nome_modelo=nome_modelo, dim=F.dim, n_catalogo=F.n_imagens,
+                                           aberturas=ABERTURAS_EXPLICA)
+        saida.append(chat(usuario, nar.texto(com_passos=False)))
+    return saida
 
 
 # ---------------------------------------------------------------------------
 # Imagem -> Texto (legendas mais próximas + zero-shot)
 # ---------------------------------------------------------------------------
-LABEL_POOL = ["cachorro", "gato", "criança", "homem", "mulher", "praia", "neve", "água", "grama", "bicicleta",
+ROTULOS_ZERO_SHOT = ["cachorro", "gato", "criança", "homem", "mulher", "praia", "neve", "água", "grama", "bicicleta",
               "futebol", "montanha", "cidade", "rua", "carro", "barco", "cavalo", "piscina", "bola", "floresta",
               "rocha", "multidão", "skate", "surf", "pássaro"]
 
 
-def imagem_para_texto(idx: Index, n: int, rng: random.Random, label_vecs: np.ndarray | None,
-                      logit_scale: float | None) -> list[dict]:
-    val = [i for i, m in enumerate(idx.img_meta) if m.get("split") == "val"]
-    own = {}
-    for j, m in enumerate(idx.cap_meta):
-        own.setdefault(m["image"], set()).add(j)
-    out = []
+def imagem_para_texto(idx: Indice, n: int, rng: random.Random, vetores_rotulos: np.ndarray | None,
+                      escala_logit: float | None) -> list[dict]:
+    val = [i for i, m in enumerate(idx.meta_img) if m.get("split") == "val"]
+    proprias = {}
+    for j, m in enumerate(idx.meta_leg):
+        proprias.setdefault(m["image"], set()).add(j)
+    saida = []
     for qi in rng.sample(val, min(n, len(val))):
-        image = idx.img_meta[qi]["image"]
-        cs = idx.cap_vecs @ idx.img_vecs[qi]
-        rows, seen = [], set()
+        imagem = idx.meta_img[qi]["image"]
+        cs = idx.vetores_leg @ idx.vetores_img[qi]
+        pares_leg, vistos = [], set()
         for j in np.argsort(-cs):
             j = int(j)
-            if j in own[image]:
+            if j in proprias[imagem]:
                 continue  # simula uma foto nova: ignora as legendas da própria imagem
-            c = idx.cap_meta[j]["caption"].strip()
-            if c.lower() not in seen:
-                seen.add(c.lower())
-                rows.append((float(cs[j]), c))
-            if len(rows) >= 3:
+            c = idx.meta_leg[j]["caption"].strip()
+            if c.lower() not in vistos:
+                vistos.add(c.lower())
+                pares_leg.append((float(cs[j]), c))
+            if len(pares_leg) >= 3:
                 break
 
         zs = None
-        if label_vecs is not None and logit_scale:
+        if vetores_rotulos is not None and escala_logit:
             # rótulos relevantes (palavras das legendas da própria foto) + distratores aleatórios
-            own_words = {w for j in own[image] for w in re.findall(r"\w+", idx.cap_meta[j]["caption"].lower())}
-            rel = [i for i, l in enumerate(LABEL_POOL) if l in own_words]
-            rng.shuffle(rel)
-            rel = rel[:rng.choice([1, 2])]
-            others = [i for i in range(len(LABEL_POOL)) if i not in rel]
-            lab_idx = rel + rng.sample(others, rng.choice([3, 4, 5]))
-            rng.shuffle(lab_idx)
-            logits = logit_scale * (label_vecs[lab_idx] @ idx.img_vecs[qi])
+            palavras_proprias = {w for j in proprias[imagem] for w in re.findall(r"\w+", idx.meta_leg[j]["caption"].lower())}
+            relevantes = [i for i, l in enumerate(ROTULOS_ZERO_SHOT) if l in palavras_proprias]
+            rng.shuffle(relevantes)
+            relevantes = relevantes[:rng.choice([1, 2])]
+            outros = [i for i in range(len(ROTULOS_ZERO_SHOT)) if i not in relevantes]
+            idx_rotulos = relevantes + rng.sample(outros, rng.choice([3, 4, 5]))
+            rng.shuffle(idx_rotulos)
+            logits = escala_logit * (vetores_rotulos[idx_rotulos] @ idx.vetores_img[qi])
             p = np.exp(logits - logits.max())
             p /= p.sum()
-            zs = {LABEL_POOL[i]: float(v) for i, v in zip(lab_idx, p)}
+            zs = {ROTULOS_ZERO_SHOT[i]: float(v) for i, v in zip(idx_rotulos, p)}
 
-        linhas = "\n".join(f"{k}. score {fmt(s, 3)} — \"{c.rstrip('.')}\"" for k, (s, c) in enumerate(rows, 1))
-        user = f"Mandei uma foto na aba Imagem → Texto. Legendas mais próximas:\n{linhas}"
+        linhas = "\n".join(f"{k}. score {fmt(s, 3)} — \"{c.rstrip('.')}\"" for k, (s, c) in enumerate(pares_leg, 1))
+        usuario = f"Mandei uma foto na aba Imagem → Texto. Legendas mais próximas:\n{linhas}"
         if zs:
-            ranked = sorted(zs.items(), key=lambda kv: -kv[1])
-            user += "\nZero-shot: " + ", ".join(f"{k} {fmt(100 * v, 0)}%" for k, v in ranked)
-        user += "\n\n" + rng.choice(["O que isso diz sobre a minha foto?", "Pode explicar?", "Como eu leio isso?"])
-        nar = jeffrey.explain_image_to_text(rows, zs, is_siglip=True)
-        out.append(chat(user, nar.text(with_steps=False)))
-    return out
+            ordenados = sorted(zs.items(), key=lambda kv: -kv[1])
+            usuario += "\nZero-shot: " + ", ".join(f"{k} {fmt(100 * v, 0)}%" for k, v in ordenados)
+        usuario += "\n\n" + rng.choice(["O que isso diz sobre a minha foto?", "Pode explicar?", "Como eu leio isso?"])
+        nar = jeffrey.explicar_imagem_para_texto(pares_leg, zs, e_siglip=True)
+        saida.append(chat(usuario, nar.texto(com_passos=False)))
+    return saida
 
 
 # ---------------------------------------------------------------------------
@@ -190,29 +190,29 @@ TAG_SINONIMOS = {
 PEDIDO_VAGO = ["Quero fotos de {v}", "busca {v}", "{v}", "Me mostra {v}", "Tem fotos de {v}?", "Procura {v} pra mim"]
 
 
-def refinamento(idx: Index, rng: random.Random, per_tag: int = 6) -> list[dict]:
-    counts = Counter(t for m in idx.img_meta for t in m.get("tags", []))
-    out = []
-    for tag, sins in TAG_SINONIMOS.items():
-        if tag not in counts:
+def refinamento(idx: Indice, rng: random.Random, por_tag: int = 6) -> list[dict]:
+    contagens = Counter(t for m in idx.meta_img for t in m.get("tags", []))
+    saida = []
+    for tag, sinonimos in TAG_SINONIMOS.items():
+        if tag not in contagens:
             continue
-        for _ in range(per_tag):
-            v = rng.choice(sins)
+        for _ in range(por_tag):
+            v = rng.choice(sinonimos)
             # sugestões = legendas reais que contêm a MESMA palavra que o usuário usou
-            pat = re.compile(rf"\b{re.escape(v)}\b", re.IGNORECASE)
-            pool = sorted({m["caption"] for m in idx.cap_meta
-                           if pat.search(m["caption"]) and 5 <= len(m["caption"].split()) <= 10})
-            if len(pool) < 3:
+            padrao = re.compile(rf"\b{re.escape(v)}\b", re.IGNORECASE)
+            opcoes = sorted({m["caption"] for m in idx.meta_leg
+                           if padrao.search(m["caption"]) and 5 <= len(m["caption"].split()) <= 10})
+            if len(opcoes) < 3:
                 continue
-            sug = rng.sample(pool, 3)
-            user = rng.choice(PEDIDO_VAGO).format(v=v)
+            sug = rng.sample(opcoes, 3)
+            usuario = rng.choice(PEDIDO_VAGO).format(v=v)
             ideias = "\n".join(f"- \"{_q(c)}\"" for c in sug)
-            resp = (f"{rng.choice(['Com prazer!', 'Claro!', 'Vamos lá!'])} O catálogo tem {fmt(counts[tag], 0)} "
+            resp = (f"{rng.choice(['Com prazer!', 'Claro!', 'Vamos lá!'])} O catálogo tem {fmt(contagens[tag], 0)} "
                     f"imagens com a tag \"{tag}\", então vale descrever a cena para chegar no que você imagina. "
                     f"Algumas ideias tiradas do próprio catálogo:\n{ideias}\n"
                     f"Também dá para marcar a tag \"{tag}\" no filtro para ver só essas imagens.")
-            out.append(chat(user, resp))
-    return out
+            saida.append(chat(usuario, resp))
+    return saida
 
 
 # ---------------------------------------------------------------------------
@@ -225,39 +225,39 @@ PALAVRAS = ["gato", "cavalo", "girafa", "elefante", "avião", "bolo", "guitarra"
             "violão", "escola", "hospital", "fogueira", "pipa", "patins", "caiaque", "rodeio", "dança", "corda"]
 
 
-def _count_word(idx: Index, word: str) -> tuple[int, list[str]]:
+def _contar_palavra(idx: Indice, palavra: str) -> tuple[int, list[str]]:
     """Quantas imagens têm a palavra em alguma das legendas, e exemplos de legendas."""
-    pat = re.compile(rf"\b{re.escape(word)}s?\b", re.IGNORECASE)
-    hits = [m for m in idx.cap_meta if pat.search(m["caption"])]
-    return len({m["image"] for m in hits}), [m["caption"] for m in hits[:5]]
+    padrao = re.compile(rf"\b{re.escape(palavra)}s?\b", re.IGNORECASE)
+    achados = [m for m in idx.meta_leg if padrao.search(m["caption"])]
+    return len({m["image"] for m in achados}), [m["caption"] for m in achados[:5]]
 
 
-def catalogo(idx: Index, rng: random.Random) -> list[dict]:
-    out = []
-    tag_counts = Counter(t for m in idx.img_meta for t in m.get("tags", []))
-    total = len(idx.img_meta)
+def catalogo(idx: Indice, rng: random.Random) -> list[dict]:
+    saida = []
+    contagem_tags = Counter(t for m in idx.meta_img for t in m.get("tags", []))
+    total = len(idx.meta_img)
 
-    for tag, n in sorted(tag_counts.items()):
+    for tag, n in sorted(contagem_tags.items()):
         pct = fmt(100 * n / total, 0)
         for pergunta in (f"Quantas fotos de {tag} tem?", f"Tem muita imagem com {tag}?"):
-            out.append(chat(pergunta,
+            saida.append(chat(pergunta,
                             f"Tem {fmt(n, 0)} imagens com a tag \"{tag}\", cerca de {pct}% das {N_IMG} do catálogo. "
                             "As tags são atribuídas automaticamente a partir das legendas, então pode haver fotos "
                             f"de {tag} sem a tag; a busca por texto encontra essas também."))
 
-    lista = "\n".join(f"- {t}: {fmt(n, 0)} imagens" for t, n in tag_counts.most_common())
+    lista = "\n".join(f"- {t}: {fmt(n, 0)} imagens" for t, n in contagem_tags.most_common())
     for pergunta in ("Quais tags existem?", "Me lista as tags", "Quais filtros eu posso usar?"):
-        out.append(chat(pergunta, f"Com prazer! Hoje existem {len(tag_counts)} tags, criadas automaticamente a "
+        saida.append(chat(pergunta, f"Com prazer! Hoje existem {len(contagem_tags)} tags, criadas automaticamente a "
                                   f"partir das legendas:\n{lista}\nQuando você escolhe mais de uma, a imagem precisa "
                                   "ter todas."))
-    mais, menos = tag_counts.most_common()[0], tag_counts.most_common()[-1]
-    out.append(chat("Qual a tag mais comum?", f"É \"{mais[0]}\", com {fmt(mais[1], 0)} imagens. Faz sentido: o "
+    mais, menos = contagem_tags.most_common()[0], contagem_tags.most_common()[-1]
+    saida.append(chat("Qual a tag mais comum?", f"É \"{mais[0]}\", com {fmt(mais[1], 0)} imagens. Faz sentido: o "
                                              "Flickr8k tem muitas fotos desse tipo."))
-    out.append(chat("Qual a tag mais rara?", f"É \"{menos[0]}\", com {fmt(menos[1], 0)} imagens. Para esse tema, "
+    saida.append(chat("Qual a tag mais rara?", f"É \"{menos[0]}\", com {fmt(menos[1], 0)} imagens. Para esse tema, "
                                             "as buscas têm menos opções para escolher."))
 
     for w in PALAVRAS:
-        n, exemplos = _count_word(idx, w)
+        n, exemplos = _contar_palavra(idx, w)
         pergunta = rng.choice([f"Tem foto de {w}?", f"Existe alguma imagem com {w}?", f"Vocês têm {w} no catálogo?"])
         if n == 0:
             resp = (f"Vou ser sincero: não encontrei nenhuma legenda com \"{w}\" no catálogo. Posso mostrar o que "
@@ -269,29 +269,29 @@ def catalogo(idx: Index, rng: random.Random) -> list[dict]:
         else:
             resp = (f"Sim! {fmt(n, 0)} imagens mencionam \"{w}\" nas legendas, como \"{_q(exemplos[0])}\". Uma busca "
                     f"descrevendo a cena com {w} deve trazê-las nos primeiros resultados.")
-        out.append(chat(pergunta, resp))
-    return out
+        saida.append(chat(pergunta, resp))
+    return saida
 
 
 # ---------------------------------------------------------------------------
 # Base x Ajustado com resultados reais dos dois índices
 # ---------------------------------------------------------------------------
-def comparacao(base: Index, tuned: Index, n: int, rng: random.Random) -> list[dict]:
-    out = []
-    for ci in _val_queries(tuned, rng, n):
-        query = _q(tuned.cap_meta[ci]["caption"])
+def comparacao(base: Indice, ajustado: Indice, n: int, rng: random.Random) -> list[dict]:
+    saida = []
+    for ci in _consultas_val(ajustado, rng, n):
+        consulta = _q(ajustado.meta_leg[ci]["caption"])
         k = rng.choice([3, 4, 5])
-        lists = []
-        for idx in (base, tuned):
-            vec = idx.cap_vecs[ci]  # mesma ordem de legendas nos dois índices
-            sc = idx.img_vecs @ vec
-            lists.append([(float(sc[i]), idx.img_meta[i]["caption"], idx.img_meta[i]["image"]) for i in _top(idx, vec, k)])
-        b, t = lists
+        listas = []
+        for idx in (base, ajustado):
+            vet = idx.vetores_leg[ci]  # mesma ordem de legendas nos dois índices
+            sc = idx.vetores_img @ vet
+            listas.append([(float(sc[i]), idx.meta_img[i]["caption"], idx.meta_img[i]["image"]) for i in _top(idx, vet, k)])
+        b, t = listas
         bloco = (f"Modelo base:\n" + "\n".join(f"{j}. \"{c.rstrip('.')}\"" for j, (_, c, _) in enumerate(b, 1)) +
                  f"\nModelo ajustado:\n" + "\n".join(f"{j}. \"{c.rstrip('.')}\"" for j, (_, c, _) in enumerate(t, 1)))
-        user = f"Comparei a busca \"{query}\" nos dois modelos:\n{bloco}\n\nO que mudou?"
-        out.append(chat(user, jeffrey.explain_compare(query, b, t).text(with_steps=False)))
-    return out
+        usuario = f"Comparei a busca \"{consulta}\" nos dois modelos:\n{bloco}\n\nO que mudou?"
+        saida.append(chat(usuario, jeffrey.explicar_comparacao(consulta, b, t).texto(com_passos=False)))
+    return saida
 
 
 # ---------------------------------------------------------------------------
@@ -306,39 +306,39 @@ DESPEDIDAS = [("Valeu, era isso!", "Por nada! Foi um prazer ajudar. Volte sempre
               ("Perfeito, obrigada", "Fico feliz em ajudar! Até a próxima.")]
 
 
-def conversas_geradas(idx: Index, n: int, rng: random.Random, model_name: str) -> list[dict]:
-    out = []
-    for ci in _val_queries(idx, rng, n):
-        query = _q(idx.cap_meta[ci]["caption"])
-        sc = idx.img_vecs @ idx.cap_vecs[ci]
-        top = _top(idx, idx.cap_vecs[ci], 4)
-        res = [(float(sc[i]), idx.img_meta[i]["caption"], idx.img_meta[i].get("tags", [])) for i in top]
+def conversas_geradas(idx: Indice, n: int, rng: random.Random, nome_modelo: str) -> list[dict]:
+    saida = []
+    for ci in _consultas_val(idx, rng, n):
+        consulta = _q(idx.meta_leg[ci]["caption"])
+        sc = idx.vetores_img @ idx.vetores_leg[ci]
+        topo = _top(idx, idx.vetores_leg[ci], 4)
+        res = [(float(sc[i]), idx.meta_img[i]["caption"], idx.meta_img[i].get("tags", [])) for i in topo]
         s_u, s_a = rng.choice(SAUDACOES)
         d_u, d_a = rng.choice(DESPEDIDAS)
-        nar = jeffrey.explain_text_search(query, res, model_name=model_name, dim=F.dim, n_catalog=F.n_images,
-                                          openers=OPENERS_EXPLICA)
-        turns = [s_u, s_a,
-                 f"Busquei \"{query}\" e veio isto:\n{_results_block(res)}\n\n{rng.choice(PEDIDOS)}", nar.text()]
+        nar = jeffrey.explicar_busca_texto(consulta, res, nome_modelo=nome_modelo, dim=F.dim, n_catalogo=F.n_imagens,
+                                          aberturas=ABERTURAS_EXPLICA)
+        turnos = [s_u, s_a,
+                 f"Busquei \"{consulta}\" e veio isto:\n{_bloco_resultados(res)}\n\n{rng.choice(PEDIDOS)}", nar.texto()]
         if rng.random() < 0.6:
             # refinamento baseado nas legendas reais dos resultados
             ideias = "\n".join(f"- \"{_q(c)}\"" for _, c, _ in res[:3])
-            turns += [rng.choice(["Como deixo a busca mais certeira?", "E se eu quiser algo mais específico?"]),
+            turnos += [rng.choice(["Como deixo a busca mais certeira?", "E se eu quiser algo mais específico?"]),
                       "Uma boa estratégia é copiar o estilo das legendas que chegaram perto do que você quer, "
                       f"acrescentando o detalhe que faltou. Por exemplo:\n{ideias}\n"
                       "Escolha a mais próxima da sua ideia e ajuste cor, lugar ou ação."]
-        turns += [d_u, d_a]
-        out.append(chat(*turns))
-    return out
+        turnos += [d_u, d_a]
+        saida.append(chat(*turnos))
+    return saida
 
 
-def label_vectors(model_path: str) -> tuple[np.ndarray | None, float | None]:
+def calcular_vetores_rotulos(caminho_modelo: str) -> tuple[np.ndarray | None, float | None]:
     """Vetores dos rótulos do zero-shot (carrega o modelo só para o texto)."""
     try:
-        from src.embeddings import ClipEncoder
+        from src.embeddings import CodificadorClip
 
-        enc = ClipEncoder(model_path)
-        vecs = enc.encode_texts([f"uma foto de {l}" for l in LABEL_POOL])
-        return vecs, float(enc.model.logit_scale.exp().item())
+        cod = CodificadorClip(caminho_modelo)
+        vets = cod.codificar_textos([f"uma foto de {l}" for l in ROTULOS_ZERO_SHOT])
+        return vets, float(cod.modelo.logit_scale.exp().item())
     except Exception as e:  # sem modelo local: gera imagem_para_texto sem zero-shot
         print(f"⚠️  Não consegui carregar o modelo para o zero-shot ({e}); seguindo sem ele.")
         return None, None

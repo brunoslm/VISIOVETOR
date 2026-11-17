@@ -6,60 +6,60 @@ import re
 from pathlib import Path
 
 import config
-from src.data import load_records
-from src.embeddings import ClipEncoder
-from src.vector_store import VectorStore
+from src.data import carregar_registros
+from src.embeddings import CodificadorClip
+from src.vector_store import IndiceVetorial
 
 
-def available_models() -> dict[str, str]:
+def modelos_disponiveis() -> dict[str, str]:
     """Rótulo amigável -> caminho/ID do modelo."""
-    models = {f"Base · {config.BASE_MODEL}": config.BASE_MODEL}
-    if (config.FINETUNED_MODEL_DIR / "config.json").exists():
-        models[f"Ajustado em PT-BR · {config.FINETUNED_MODEL_DIR.relative_to(config.ROOT_DIR)}"] = str(config.FINETUNED_MODEL_DIR)
-    return models
+    modelos = {f"Base · {config.MODELO_BASE}": config.MODELO_BASE}
+    if (config.DIR_MODELO_AJUSTADO / "config.json").exists():
+        modelos[f"Ajustado em PT-BR · {config.DIR_MODELO_AJUSTADO.relative_to(config.DIR_RAIZ)}"] = str(config.DIR_MODELO_AJUSTADO)
+    return modelos
 
 
-def _slug(model_path: str) -> str:
-    return re.sub(r"[^A-Za-z0-9]+", "_", Path(model_path).name if Path(model_path).exists() else model_path).strip("_")
+def _slug(caminho_modelo: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", Path(caminho_modelo).name if Path(caminho_modelo).exists() else caminho_modelo).strip("_")
 
 
-def index_prefix(model_path: str, kind: str) -> Path:
-    return config.EMBEDDINGS_DIR / f"{_slug(model_path)}__{kind}"
+def prefixo_indice(caminho_modelo: str, tipo: str) -> Path:
+    return config.DIR_EMBEDDINGS / f"{_slug(caminho_modelo)}__{tipo}"
 
 
-def build_indexes(encoder: ClipEncoder, force: bool = False) -> tuple[VectorStore, VectorStore]:
+def construir_indices(codificador: CodificadorClip, forcar: bool = False) -> tuple[IndiceVetorial, IndiceVetorial]:
     """Retorna (índice de imagens, índice de legendas), usando cache em data/embeddings."""
-    img_prefix = index_prefix(encoder.model_path, "images")
-    cap_prefix = index_prefix(encoder.model_path, "captions")
-    records = load_records()
+    prefixo_img = prefixo_indice(codificador.caminho_modelo, "images")
+    prefixo_leg = prefixo_indice(codificador.caminho_modelo, "captions")
+    registros = carregar_registros()
 
-    if not force and VectorStore.exists(img_prefix) and VectorStore.exists(cap_prefix):
-        images, captions = VectorStore.load(img_prefix), VectorStore.load(cap_prefix)
+    if not forcar and IndiceVetorial.existe(prefixo_img) and IndiceVetorial.existe(prefixo_leg):
+        imagens, legendas = IndiceVetorial.carregar(prefixo_img), IndiceVetorial.carregar(prefixo_leg)
         # modelo local re-treinado depois do índice => índice velho
-        weights = list(Path(encoder.model_path).glob("*.safetensors")) if Path(encoder.model_path).is_dir() else []
-        index_time = img_prefix.with_suffix(".npy").stat().st_mtime
-        stale_model = any(w.stat().st_mtime > index_time for w in weights)
-        if len(images) == len(records) and not stale_model:
-            return images, captions
+        pesos = list(Path(codificador.caminho_modelo).glob("*.safetensors")) if Path(codificador.caminho_modelo).is_dir() else []
+        hora_indice = prefixo_img.with_suffix(".npy").stat().st_mtime
+        modelo_desatualizado = any(w.stat().st_mtime > hora_indice for w in pesos)
+        if len(imagens) == len(registros) and not modelo_desatualizado:
+            return imagens, legendas
         print("⚠️  Catálogo ou modelo mudou desde o último índice — reconstruindo.")
 
-    print(f"🔧 Construindo índices para {encoder.model_path} ({len(records)} imagens)...")
-    img_meta = [
+    print(f"🔧 Construindo índices para {codificador.caminho_modelo} ({len(registros)} imagens)...")
+    meta_img = [
         {"image": r["image"], "path": r["path"], "caption": r["captions"][0], "tags": r["tags"], "split": r["split"]}
-        for r in records
+        for r in registros
     ]
-    images = VectorStore()
-    images.add(encoder.encode_images([r["path"] for r in records], show_progress=True), img_meta)
+    imagens = IndiceVetorial()
+    imagens.adicionar(codificador.codificar_imagens([r["path"] for r in registros], mostrar_progresso=True), meta_img)
 
-    cap_meta = [
+    meta_leg = [
         {"caption": c, "image": r["image"], "tags": r["tags"]}
-        for r in records
+        for r in registros
         for c in r["captions"]
     ]
-    captions = VectorStore()
-    captions.add(encoder.encode_texts([m["caption"] for m in cap_meta], show_progress=True), cap_meta)
+    legendas = IndiceVetorial()
+    legendas.adicionar(codificador.codificar_textos([m["caption"] for m in meta_leg], mostrar_progresso=True), meta_leg)
 
-    images.save(img_prefix)
-    captions.save(cap_prefix)
-    print(f"✅ Índices salvos em {config.EMBEDDINGS_DIR}")
-    return images, captions
+    imagens.salvar(prefixo_img)
+    legendas.salvar(prefixo_leg)
+    print(f"✅ Índices salvos em {config.DIR_EMBEDDINGS}")
+    return imagens, legendas

@@ -10,21 +10,21 @@ from pathlib import Path
 import gradio as gr
 
 import config
-from src.catalog import available_models, build_indexes
-from src.embeddings import ClipEncoder
+from src.catalog import modelos_disponiveis, construir_indices
+from src.embeddings import CodificadorClip
 from src import jeffrey
-from src.data import load_records
+from src.data import carregar_registros
 from src.jeffrey_chat import SUGESTOES, JeffreyChat
-from src.jeffrey_llm import JeffreyLLM, score_stats
-from src.persona import load_facts
+from src.jeffrey_llm import JeffreyLLM, estatisticas_score
+from src.persona import carregar_fatos
 from src.ui_theme import (
-    CHAT_HEADER, FOOTER_JS, chat_intro_html, THEME_JS, footer_html, build_theme, hero_html, load_css, metrics_html, section_html,
+    CABECALHO_CHAT, JS_RODAPE, html_intro_chat, JS_TEMA, html_rodape, construir_tema, html_destaque, carregar_css, html_metricas, html_secao,
 )
 
-MODELS = available_models()
-DEFAULT_MODEL = list(MODELS)[-1]  # fine-tuned, se existir
+MODELOS = modelos_disponiveis()
+MODELO_PADRAO = list(MODELOS)[-1]  # fine-tuned, se existir
 
-EXAMPLES = [
+EXEMPLOS_BUSCA = [
     "um cachorro correndo na grama",
     "crianças brincando na água",
     "uma pessoa andando de bicicleta",
@@ -34,56 +34,56 @@ EXAMPLES = [
 
 
 @lru_cache(maxsize=4)
-def get_engine(label: str):
-    encoder = ClipEncoder(MODELS[label])
-    images, captions = build_indexes(encoder)
-    return encoder, images, captions
+def obter_motor(rotulo: str):
+    codificador = CodificadorClip(MODELOS[rotulo])
+    imagens, legendas = construir_indices(codificador)
+    return codificador, imagens, legendas
 
 
 @lru_cache(maxsize=512)
-def _text_vec(model: str, query: str):
+def _vetor_texto(modelo: str, consulta: str):
     """Vetor da consulta em cache: repetir a busca ou mudar só tags/Top-K não reprocessa o texto."""
-    vec = get_engine(model)[0].encode_text(query)
-    vec.setflags(write=False)
-    return vec
+    vet = obter_motor(modelo)[0].codificar_texto(consulta)
+    vet.setflags(write=False)
+    return vet
 
 
-def example_images(n: int = 6) -> list[str]:
+def imagens_exemplo(n: int = 6) -> list[str]:
     """Imagens de validação (fora do treino) com tags variadas, para testar as abas de imagem sem upload."""
-    picked, seen = [], set()
-    for r in load_records(split="val"):
-        key = tuple(r["tags"][:1])
-        if key and key not in seen and Path(r["path"]).exists():
-            seen.add(key)
-            picked.append(r["path"])
-        if len(picked) >= n:
+    escolhidas, vistos = [], set()
+    for r in carregar_registros(divisao="val"):
+        chave = tuple(r["tags"][:1])
+        if chave and chave not in vistos and Path(r["path"]).exists():
+            vistos.add(chave)
+            escolhidas.append(r["path"])
+        if len(escolhidas) >= n:
             break
-    return picked
+    return escolhidas
 
 
-def load_metrics() -> dict | None:
-    path = config.FINETUNED_MODEL_DIR / "metrics.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+def carregar_metricas() -> dict | None:
+    caminho = config.DIR_MODELO_AJUSTADO / "metrics.json"
+    return json.loads(caminho.read_text(encoding="utf-8")) if caminho.exists() else None
 
 
-def _gallery(results) -> list[tuple[str, str]]:
-    return [(r.metadata["path"], f"{r.score:.3f} · {r.metadata['caption']}") for r in results]
+def _galeria(resultados) -> list[tuple[str, str]]:
+    return [(r.metadados["path"], f"{r.score:.3f} · {r.metadados['caption']}") for r in resultados]
 
 
-def _ctx(kind: str, results, query: str | None = None, steps=None, **extra) -> dict:
+def _contexto(tipo: str, resultados, consulta: str | None = None, passos=None, **extra) -> dict:
     """Contexto da última busca de uma aba, para o Jeffrey comentar no chat."""
-    return {"kind": kind, "query": query, "steps": list(steps or []), **extra,
-            "results": [{"score": float(r.score), "caption": r.metadata["caption"], "tags": r.metadata.get("tags", [])}
-                        for r in results]}
+    return {"kind": tipo, "query": consulta, "steps": list(passos or []), **extra,
+            "results": [{"score": float(r.score), "caption": r.metadados["caption"], "tags": r.metadados.get("tags", [])}
+                        for r in resultados]}
 
 
-def _triples(results) -> list[tuple[float, str, list[str]]]:
-    return [(r.score, r.metadata["caption"], r.metadata.get("tags", [])) for r in results]
+def _triplas(resultados) -> list[tuple[float, str, list[str]]]:
+    return [(r.score, r.metadados["caption"], r.metadados.get("tags", [])) for r in resultados]
 
 
-def _model_name(label: str) -> str:
+def _nome_modelo(rotulo: str) -> str:
     """Nome curto do modelo para o Jeffrey citar."""
-    return "SigLIP 2 ajustado em português" if label != list(MODELS)[0] else MODELS[label]
+    return "SigLIP 2 ajustado em português" if rotulo != list(MODELOS)[0] else MODELOS[rotulo]
 
 
 def _ms(t0: float) -> float:
@@ -91,213 +91,213 @@ def _ms(t0: float) -> float:
 
 
 # -- handlers ---------------------------------------------------------------
-def text_to_image(query: str, model: str, top_k: int, tags: list[str] | None):
-    if not query or not query.strip():
+def texto_para_imagem(consulta: str, modelo: str, top_k: int, tags: list[str] | None):
+    if not consulta or not consulta.strip():
         raise gr.Error("Digite uma descrição para buscar.")
-    query = query.strip()
+    consulta = consulta.strip()
     t0 = time.perf_counter()
-    enc, images, _ = get_engine(model)
-    results = images.search(_text_vec(model, query), top_k=int(top_k), tags=tags or None)
-    nar = jeffrey.explain_text_search(
-        query, _triples(results), model_name=_model_name(model), dim=images.vectors.shape[1],
-        n_catalog=len(images), tags=tags or None, n_after_filter=images.count_with_tags(tags), ms=_ms(t0),
+    cod, imagens, _ = obter_motor(modelo)
+    resultados = imagens.buscar(_vetor_texto(modelo, consulta), top_k=int(top_k), tags=tags or None)
+    nar = jeffrey.explicar_busca_texto(
+        consulta, _triplas(resultados), nome_modelo=_nome_modelo(modelo), dim=imagens.vetores.shape[1],
+        n_catalogo=len(imagens), tags=tags or None, n_apos_filtro=imagens.contar_com_tags(tags), ms=_ms(t0),
     )
-    return _gallery(results), nar.html(), _ctx("texto", results, query, nar.steps, tags=tags or None)
+    return _galeria(resultados), nar.html(), _contexto("texto", resultados, consulta, nar.passos, tags=tags or None)
 
 
-def image_to_image(image, model: str, top_k: int, tags: list[str] | None):
-    if image is None:
+def imagem_para_imagem(imagem, modelo: str, top_k: int, tags: list[str] | None):
+    if imagem is None:
         raise gr.Error("Envie uma imagem.")
     t0 = time.perf_counter()
-    enc, images, _ = get_engine(model)
-    results = images.search(enc.encode_image(image), top_k=int(top_k), tags=tags or None)
-    nar = jeffrey.explain_image_search(
-        _triples(results), model_name=_model_name(model), dim=images.vectors.shape[1], n_catalog=len(images),
-        tags=tags or None, n_after_filter=images.count_with_tags(tags), ms=_ms(t0),
+    cod, imagens, _ = obter_motor(modelo)
+    resultados = imagens.buscar(cod.codificar_imagem(imagem), top_k=int(top_k), tags=tags or None)
+    nar = jeffrey.explicar_busca_imagem(
+        _triplas(resultados), nome_modelo=_nome_modelo(modelo), dim=imagens.vetores.shape[1], n_catalogo=len(imagens),
+        tags=tags or None, n_apos_filtro=imagens.contar_com_tags(tags), ms=_ms(t0),
     )
-    return _gallery(results), nar.html(), _ctx("imagem", results, None, nar.steps, tags=tags or None)
+    return _galeria(resultados), nar.html(), _contexto("imagem", resultados, None, nar.passos, tags=tags or None)
 
 
-def image_to_text(image, model: str, labels: str, top_k: int):
-    if image is None:
+def imagem_para_texto(imagem, modelo: str, rotulos: str, top_k: int):
+    if imagem is None:
         raise gr.Error("Envie uma imagem.")
     t0 = time.perf_counter()
-    enc, _, captions = get_engine(model)
-    vec = enc.encode_image(image)
+    cod, _, legendas = obter_motor(modelo)
+    vet = cod.codificar_imagem(imagem)
 
     # 1) legendas mais próximas do catálogo (recuperação imagem -> texto)
-    seen, rows = set(), []
-    for r in captions.search(vec, top_k=int(top_k) * 3):
-        cap = r.metadata["caption"]
-        if cap.lower() not in seen:
-            seen.add(cap.lower())
-            rows.append([round(r.score, 3), cap])
-        if len(rows) >= int(top_k):
+    vistos, linhas = set(), []
+    for r in legendas.buscar(vet, top_k=int(top_k) * 3):
+        leg = r.metadados["caption"]
+        if leg.lower() not in vistos:
+            vistos.add(leg.lower())
+            linhas.append([round(r.score, 3), leg])
+        if len(linhas) >= int(top_k):
             break
 
     # 2) classificação zero-shot com rótulos livres
-    label_list = [l.strip() for l in labels.split(",") if l.strip()]
-    zero_shot = enc.zero_shot(image, label_list) if len(label_list) >= 2 else {}
-    nar = jeffrey.explain_image_to_text(
-        [(r[0], r[1]) for r in rows], zero_shot, is_siglip=enc.is_siglip, model_name=_model_name(model), ms=_ms(t0),
+    lista_rotulos = [l.strip() for l in rotulos.split(",") if l.strip()]
+    zero_shot = cod.zero_shot(imagem, lista_rotulos) if len(lista_rotulos) >= 2 else {}
+    nar = jeffrey.explicar_imagem_para_texto(
+        [(r[0], r[1]) for r in linhas], zero_shot, e_siglip=cod.e_siglip, nome_modelo=_nome_modelo(modelo), ms=_ms(t0),
     )
-    ctx = {"kind": "descrever", "query": None, "steps": nar.steps, "zero_shot": zero_shot,
-           "results": [{"score": float(sc), "caption": c, "tags": []} for sc, c in rows]}
-    return rows, zero_shot, nar.html(), ctx
+    ctx = {"kind": "descrever", "query": None, "steps": nar.passos, "zero_shot": zero_shot,
+           "results": [{"score": float(sc), "caption": c, "tags": []} for sc, c in linhas]}
+    return linhas, zero_shot, nar.html(), ctx
 
 
-def compare_models(query: str, top_k: int):
-    if len(MODELS) < 2:
+def comparar_modelos(consulta: str, top_k: int):
+    if len(MODELOS) < 2:
         raise gr.Error("Treine o modelo primeiro: python scripts/finetune.py")
-    if not query or not query.strip():
+    if not consulta or not consulta.strip():
         raise gr.Error("Digite uma descrição para comparar.")
-    query = query.strip()
-    out = []
-    for label in list(MODELS)[:2]:
-        images = get_engine(label)[1]
-        out.append(images.search(_text_vec(label, query), top_k=int(top_k)))
-    base, tuned = ([(r.score, r.metadata["caption"], r.metadata["image"]) for r in res] for res in out)
-    nar = jeffrey.explain_compare(query, base, tuned)
-    ctx = _ctx("comparar", out[1], query, nar.steps,
-               base=[{"score": float(r.score), "caption": r.metadata["caption"]} for r in out[0]])
-    return _gallery(out[0]), _gallery(out[1]), nar.html(), ctx
+    consulta = consulta.strip()
+    saida = []
+    for rotulo in list(MODELOS)[:2]:
+        imagens = obter_motor(rotulo)[1]
+        saida.append(imagens.buscar(_vetor_texto(rotulo, consulta), top_k=int(top_k)))
+    base, ajustado = ([(r.score, r.metadados["caption"], r.metadados["image"]) for r in res] for res in saida)
+    nar = jeffrey.explicar_comparacao(consulta, base, ajustado)
+    ctx = _contexto("comparar", saida[1], consulta, nar.passos,
+               base=[{"score": float(r.score), "caption": r.metadados["caption"]} for r in saida[0]])
+    return _galeria(saida[0]), _galeria(saida[1]), nar.html(), ctx
 
 
 # -- chat com o Jeffrey --------------------------------------------------------
-JEFF = JeffreyChat(load_records(), facts=load_facts())
-LLM: JeffreyLLM | None = None  # criado em build_ui, carrega em segundo plano
+JEFF = JeffreyChat(carregar_registros(), fatos=carregar_fatos())
+LLM: JeffreyLLM | None = None  # criado em construir_interface, carrega em segundo plano
 PENSANDO = '<span class="vv-typing" aria-label="Jeffrey está digitando"><i></i><i></i><i></i></span>'
 JEFF_AVATAR = str(Path(__file__).with_name("src") / "assets" / "jeffrey.svg")
 
 
-def _chat_turn(hist: list, msg: str, ans: str) -> list:
-    return (hist or []) + [{"role": "user", "content": msg}, {"role": "assistant", "content": ans}]
+def _turno_chat(hist: list, msg: str, resp: str) -> list:
+    return (hist or []) + [{"role": "user", "content": msg}, {"role": "assistant", "content": resp}]
 
 
-def _jeffrey_stream(msg: str, hist: list, ctx: dict | None, kind: str):
+def _fluxo_jeffrey(msg: str, hist: list, ctx: dict | None, tipo: str):
     """Texto parcial da resposta. LLM quando disponível; regras como plano B."""
-    if (a := JEFF.answer_safety(msg)):
+    if (a := JEFF.responder_seguranca(msg)):
         yield a
-    elif (a := JEFF.analysis(msg, ctx)):
+    elif (a := JEFF.analise(msg, ctx)):
         yield a  # pergunta específica (posição, "qual tem X", catálogo): resposta exata, sem LLM
-    elif LLM is not None and LLM.available:
-        yield from LLM.stream(msg, ctx, hist, kind)
+    elif LLM is not None and LLM.disponivel:
+        yield from LLM.gerar_em_fluxo(msg, ctx, hist, tipo)
     else:
-        yield JEFF.reply(msg, ctx, kind)[0]
+        yield JEFF.responder(msg, ctx, tipo)[0]
 
 
-def _stream_turn(msg: str, hist: list, ctx: dict | None, kind: str):
+def _turno_em_fluxo(msg: str, hist: list, ctx: dict | None, tipo: str):
     hist = list(hist or []) + [{"role": "user", "content": msg}]
     yield hist + [{"role": "assistant", "content": PENSANDO}]
-    for partial in _jeffrey_stream(msg, hist[:-1], ctx, kind):
-        yield hist + [{"role": "assistant", "content": partial or PENSANDO}]
+    for parcial in _fluxo_jeffrey(msg, hist[:-1], ctx, tipo):
+        yield hist + [{"role": "assistant", "content": parcial or PENSANDO}]
 
 
-def chat_fn(kind: str):
+def funcao_chat(tipo: str):
     """Conversa sobre a última busca da aba. O chat não roda buscas: elas ficam na caixa do topo."""
     def fn(msg, hist, ctx):
         msg = (msg or "").strip()
         if not msg:
             yield gr.skip(), gr.skip()
             return
-        if JEFF.search_request(msg):
-            yield "", gr.update(value=_chat_turn(hist, msg, JEFF.reply(msg, ctx, kind)[0]), visible=True)
+        if JEFF.pedido_de_busca(msg):
+            yield "", gr.update(value=_turno_chat(hist, msg, JEFF.responder(msg, ctx, tipo)[0]), visible=True)
             return
-        for h in _stream_turn(msg, hist, ctx, kind):
+        for h in _turno_em_fluxo(msg, hist, ctx, tipo):
             yield "", gr.update(value=h, visible=True)
     return fn
 
 
 # -- UI -----------------------------------------------------------------------
-def _gallery_component(label: str, columns: int = 4) -> gr.Gallery:
+def _componente_galeria(rotulo: str, colunas: int = 4) -> gr.Gallery:
     return gr.Gallery(
-        label=label, show_label=False, columns=columns, height="auto",
+        label=rotulo, show_label=False, columns=colunas, height="auto",
         object_fit="cover", allow_preview=True, elem_classes="vv-gallery",
     )
 
 
-def _reveal(fn):
+def _revelar(fn):
     """Roda a busca e mostra a área de resultados (escondida até a primeira busca)."""
-    def wrapped(*args):
+    def envolvida(*args):
         return (*fn(*args), gr.update(visible=True))
-    return wrapped
+    return envolvida
 
 
-def chat_block(kind: str):
+def bloco_chat(tipo: str):
     """Chat com o Jeffrey logo abaixo da fala dele. Devolve (chips, chatbot, caixa, botão)."""
-    gr.HTML(chat_intro_html(kind), elem_classes="vv-chat-intro")
+    gr.HTML(html_intro_chat(tipo), elem_classes="vv-chat-intro")
     with gr.Group(elem_classes="vv-chat"):
-        gr.HTML(CHAT_HEADER)
-        bot = gr.Chatbot(show_label=False, visible=False, height=340, layout="bubble",
+        gr.HTML(CABECALHO_CHAT)
+        chatbot = gr.Chatbot(show_label=False, visible=False, height=340, layout="bubble",
                          elem_classes="vv-chat-log", buttons=[], avatar_images=(None, JEFF_AVATAR))
         with gr.Row(equal_height=True, elem_classes="vv-chat-input"):
-            box = gr.Textbox(show_label=False, container=False, scale=5, elem_classes="vv-chat-box",
+            caixa = gr.Textbox(show_label=False, container=False, scale=5, elem_classes="vv-chat-box",
                              placeholder="Pergunte ao Jeffrey sobre os resultados")
-            send = gr.Button("Enviar", variant="primary", scale=0, min_width=96, elem_classes="vv-chat-send")
+            enviar = gr.Button("Enviar", variant="primary", scale=0, min_width=96, elem_classes="vv-chat-send")
     with gr.Row(elem_classes="vv-chips vv-chat-chips"):
-        chips = [gr.Button(s, size="sm", variant="secondary", elem_classes="vv-chip") for s in SUGESTOES[kind]]
-    return chips, bot, box, send
+        chips = [gr.Button(s, size="sm", variant="secondary", elem_classes="vv-chip") for s in SUGESTOES[tipo]]
+    return chips, chatbot, caixa, enviar
 
 
-def _wire_chat(chips, box, send, fn, inputs, outputs):
-    for ev in (send.click, box.submit):
-        ev(fn, inputs, outputs)
+def _ligar_chat(chips, caixa, enviar, fn, entradas, saidas):
+    for evento in (enviar.click, caixa.submit):
+        evento(fn, entradas, saidas)
     for chip in chips:
-        chip.click(lambda t=chip.value: t, None, box).then(fn, inputs, outputs)
+        chip.click(lambda t=chip.value: t, None, caixa).then(fn, entradas, saidas)
 
 
-def build_ui() -> gr.Blocks:
+def construir_interface() -> gr.Blocks:
     global LLM
-    enc, images, captions = get_engine(DEFAULT_MODEL)
-    tags = images.all_tags()
-    LLM = JeffreyLLM(JEFF, load_facts(), score_stats(images, captions))
-    LLM.load_async()
-    metrics = load_metrics()
-    gain = (metrics["best"]["t2i_R@1"] - metrics["baseline"]["t2i_R@1"]) if metrics else None
-    samples = example_images()
+    cod, imagens, legendas = obter_motor(MODELO_PADRAO)
+    tags = imagens.todas_tags()
+    LLM = JeffreyLLM(JEFF, carregar_fatos(), estatisticas_score(imagens, legendas))
+    LLM.carregar_em_segundo_plano()
+    metricas = carregar_metricas()
+    ganho = (metricas["best"]["t2i_R@1"] - metricas["baseline"]["t2i_R@1"]) if metricas else None
+    amostras = imagens_exemplo()
 
-    with gr.Blocks(title="VisioVetor") as demo:
+    with gr.Blocks(title="VisioVetor") as interface:
         gr.HTML(
-            hero_html(len(images), len(captions), len(tags), config.DEVICE, gain,
-                      dim=images.vectors.shape[1], model_name=config.BASE_MODEL),
-            js_on_load=THEME_JS,
+            html_destaque(len(imagens), len(legendas), len(tags), config.DISPOSITIVO, ganho,
+                      dim=imagens.vetores.shape[1], nome_modelo=config.MODELO_BASE),
+            js_on_load=JS_TEMA,
         )
 
         with gr.Row(elem_classes="vv-toolbar"):
-            model = gr.Dropdown(
-                list(MODELS), value=DEFAULT_MODEL, label="Modelo",
+            modelo = gr.Dropdown(
+                list(MODELOS), value=MODELO_PADRAO, label="Modelo",
                 info="O índice de cada modelo fica em cache; a primeira troca leva alguns segundos.",
             )
 
         with gr.Tabs(elem_classes="vv-tabs"):
             # ---------------------------------------------------------------- texto -> imagem
             with gr.Tab("Texto → Imagem"):
-                gr.HTML(section_html("sky", "Busca por descrição", "Descreva a cena em português",
+                gr.HTML(html_secao("sky", "Busca por descrição", "Descreva a cena em português",
                                      "O texto vira um vetor e é comparado com todas as imagens do catálogo."))
                 with gr.Row(equal_height=True):
                     q = gr.Textbox(show_label=False, placeholder="Ex.: um cachorro correndo na grama",
-                                   scale=5, container=False, autofocus=True)
-                    btn = gr.Button("Buscar", variant="primary", scale=1, min_width=110)
+                                   scale=5, container=False)
+                    botao = gr.Button("Buscar", variant="primary", scale=1, min_width=110)
                 with gr.Row(elem_classes="vv-chips"):
-                    chips = [gr.Button(e, size="sm", variant="secondary", elem_classes="vv-chip") for e in EXAMPLES]
+                    chips = [gr.Button(e, size="sm", variant="secondary", elem_classes="vv-chip") for e in EXEMPLOS_BUSCA]
                 with gr.Row():
                     k1 = gr.Slider(1, 32, value=8, step=1, label="Resultados")
                     t1 = gr.Dropdown(tags, multiselect=True, label="Filtrar por tags",
                                      info="A imagem precisa ter todas as tags escolhidas.")
                 with gr.Column(visible=False) as r1:
-                    g1 = _gallery_component("Resultados")
-                j1 = gr.HTML(jeffrey.welcome("texto").html())
+                    g1 = _componente_galeria("Resultados")
+                j1 = gr.HTML(jeffrey.boas_vindas("texto").html())
                 ctx1 = gr.State(None)
-                c1chips, c1bot, c1box, c1send = chat_block("texto")
-                for ev in (btn.click, q.submit):
-                    ev(_reveal(text_to_image), [q, model, k1, t1], [g1, j1, ctx1, r1])
-                for chip, text in zip(chips, EXAMPLES):
-                    chip.click(lambda t=text: t, None, q).then(_reveal(text_to_image), [q, model, k1, t1], [g1, j1, ctx1, r1])
-                _wire_chat(c1chips, c1box, c1send, chat_fn("texto"), [c1box, c1bot, ctx1], [c1box, c1bot])
+                c1chips, c1bot, c1box, c1send = bloco_chat("texto")
+                for evento in (botao.click, q.submit):
+                    evento(_revelar(texto_para_imagem), [q, modelo, k1, t1], [g1, j1, ctx1, r1])
+                for chip, texto in zip(chips, EXEMPLOS_BUSCA):
+                    chip.click(lambda t=texto: t, None, q).then(_revelar(texto_para_imagem), [q, modelo, k1, t1], [g1, j1, ctx1, r1])
+                _ligar_chat(c1chips, c1box, c1send, funcao_chat("texto"), [c1box, c1bot, ctx1], [c1box, c1bot])
 
             # ---------------------------------------------------------------- imagem -> imagem
             with gr.Tab("Imagem → Imagem"):
-                gr.HTML(section_html("violet", "Similaridade visual", "Encontre imagens parecidas",
+                gr.HTML(html_secao("violet", "Similaridade visual", "Encontre imagens parecidas",
                                      "Envie uma foto e veja as mais próximas no espaço vetorial."))
                 with gr.Row():
                     im2 = gr.Image(type="pil", label="Imagem de consulta", height=320, scale=2)
@@ -305,72 +305,72 @@ def build_ui() -> gr.Blocks:
                         k2 = gr.Slider(1, 32, value=8, step=1, label="Resultados")
                         t2 = gr.Dropdown(tags, multiselect=True, label="Filtrar por tags")
                         b2 = gr.Button("Buscar parecidas", variant="primary")
-                if samples:
-                    gr.Examples(samples, inputs=im2, label="Sem foto à mão? Clique num exemplo",
-                                examples_per_page=len(samples))
+                if amostras:
+                    gr.Examples(amostras, inputs=im2, label="Sem foto à mão? Clique num exemplo",
+                                examples_per_page=len(amostras))
                 with gr.Column(visible=False) as r2:
-                    g2 = _gallery_component("Imagens similares")
-                j2 = gr.HTML(jeffrey.welcome("imagem").html())
+                    g2 = _componente_galeria("Imagens similares")
+                j2 = gr.HTML(jeffrey.boas_vindas("imagem").html())
                 ctx2 = gr.State(None)
-                c2chips, c2bot, c2box, c2send = chat_block("imagem")
-                b2.click(_reveal(image_to_image), [im2, model, k2, t2], [g2, j2, ctx2, r2])
-                _wire_chat(c2chips, c2box, c2send, chat_fn("imagem"), [c2box, c2bot, ctx2], [c2box, c2bot])
+                c2chips, c2bot, c2box, c2send = bloco_chat("imagem")
+                b2.click(_revelar(imagem_para_imagem), [im2, modelo, k2, t2], [g2, j2, ctx2, r2])
+                _ligar_chat(c2chips, c2box, c2send, funcao_chat("imagem"), [c2box, c2bot, ctx2], [c2box, c2bot])
 
             # ---------------------------------------------------------------- imagem -> texto
             with gr.Tab("Imagem → Texto"):
-                gr.HTML(section_html("teal", "Descrição automática", "Do pixel para o texto",
+                gr.HTML(html_secao("teal", "Descrição automática", "Do pixel para o texto",
                                      "Recupera as legendas mais próximas do catálogo e classifica a imagem "
                                      "com rótulos livres, sem treino extra (zero-shot)."))
                 with gr.Row():
                     im3 = gr.Image(type="pil", label="Imagem", height=320, scale=2)
                     with gr.Column(scale=1, min_width=240):
-                        labels = gr.Textbox(
+                        rotulos = gr.Textbox(
                             value="cachorro, gato, criança, praia, neve, bicicleta, futebol, montanha",
                             label="Rótulos", info="Separados por vírgula.", lines=2,
                         )
                         k3 = gr.Slider(1, 15, value=5, step=1, label="Legendas")
                         b3 = gr.Button("Descrever", variant="primary")
-                if samples:
-                    gr.Examples(samples, inputs=im3, label="Sem foto à mão? Clique num exemplo",
-                                examples_per_page=len(samples))
+                if amostras:
+                    gr.Examples(amostras, inputs=im3, label="Sem foto à mão? Clique num exemplo",
+                                examples_per_page=len(amostras))
                 with gr.Row(visible=False) as r3:
-                    caps = gr.Dataframe(headers=["Score", "Legenda mais próxima"], label="Legendas do catálogo",
+                    tabela_legendas = gr.Dataframe(headers=["Score", "Legenda mais próxima"], label="Legendas do catálogo",
                                         column_widths=["90px", "auto"], wrap=True, interactive=False, scale=3)
                     zs = gr.Label(label="Classificação zero-shot", num_top_classes=5, scale=2)
-                j3 = gr.HTML(jeffrey.welcome("descrever").html())
+                j3 = gr.HTML(jeffrey.boas_vindas("descrever").html())
                 ctx3 = gr.State(None)
-                c3chips, c3bot, c3box, c3send = chat_block("descrever")
-                b3.click(_reveal(image_to_text), [im3, model, labels, k3], [caps, zs, j3, ctx3, r3])
-                _wire_chat(c3chips, c3box, c3send, chat_fn("descrever"), [c3box, c3bot, ctx3], [c3box, c3bot])
+                c3chips, c3bot, c3box, c3send = bloco_chat("descrever")
+                b3.click(_revelar(imagem_para_texto), [im3, modelo, rotulos, k3], [tabela_legendas, zs, j3, ctx3, r3])
+                _ligar_chat(c3chips, c3box, c3send, funcao_chat("descrever"), [c3box, c3bot, ctx3], [c3box, c3bot])
 
             # ---------------------------------------------------------------- comparação
             with gr.Tab("Base × Ajustado"):
-                gr.HTML(section_html("amber", "Fine-tuning", "Quanto o ajuste em português ajudou",
+                gr.HTML(html_secao("amber", "Fine-tuning", "Quanto o ajuste em português ajudou",
                                      "Métricas medidas só nas imagens de validação, que não entram no treino."))
-                gr.HTML(metrics_html(metrics))
+                gr.HTML(html_metricas(metricas))
                 with gr.Row(equal_height=True, elem_classes="vv-spaced"):
-                    q4 = gr.Textbox(value=EXAMPLES[0], show_label=False, placeholder="Descreva uma cena",
+                    q4 = gr.Textbox(value=EXEMPLOS_BUSCA[0], show_label=False, placeholder="Descreva uma cena",
                                     scale=5, container=False)
                     b4 = gr.Button("Comparar", variant="primary", scale=1, min_width=110)
                 k4 = gr.Slider(1, 12, value=4, step=1, label="Resultados por modelo")
                 with gr.Row(visible=False) as r4:
                     with gr.Column():
                         gr.HTML('<p class="vv-eyebrow"><span class="vv-dot vv-zinc"></span>Modelo base</p>')
-                        g4a = _gallery_component("Base", columns=2)
+                        g4a = _componente_galeria("Base", colunas=2)
                     with gr.Column():
                         gr.HTML('<p class="vv-eyebrow"><span class="vv-dot vv-sky"></span>Ajustado em português</p>')
-                        g4b = _gallery_component("Ajustado", columns=2)
-                j4 = gr.HTML(jeffrey.welcome("comparar").html())
+                        g4b = _componente_galeria("Ajustado", colunas=2)
+                j4 = gr.HTML(jeffrey.boas_vindas("comparar").html())
                 ctx4 = gr.State(None)
-                c4chips, c4bot, c4box, c4send = chat_block("comparar")
-                for ev in (b4.click, q4.submit):
-                    ev(_reveal(compare_models), [q4, k4], [g4a, g4b, j4, ctx4, r4])
-                _wire_chat(c4chips, c4box, c4send, chat_fn("comparar"), [c4box, c4bot, ctx4], [c4box, c4bot])
+                c4chips, c4bot, c4box, c4send = bloco_chat("comparar")
+                for evento in (b4.click, q4.submit):
+                    evento(_revelar(comparar_modelos), [q4, k4], [g4a, g4b, j4, ctx4, r4])
+                _ligar_chat(c4chips, c4box, c4send, funcao_chat("comparar"), [c4box, c4bot, ctx4], [c4box, c4bot])
 
-        gr.HTML(footer_html(config.BASE_MODEL, images.vectors.shape[1], config.DEVICE, len(images)),
-                js_on_load=FOOTER_JS)
-    return demo
+        gr.HTML(html_rodape(config.MODELO_BASE, imagens.vetores.shape[1], config.DISPOSITIVO, len(imagens)),
+                js_on_load=JS_RODAPE)
+    return interface
 
 
 if __name__ == "__main__":
-    build_ui().launch(theme=build_theme(), css=load_css())
+    construir_interface().launch(theme=construir_tema(), css=carregar_css())

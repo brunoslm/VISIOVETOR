@@ -23,45 +23,45 @@ from datasets import load_dataset  # noqa: E402
 from tqdm import tqdm  # noqa: E402
 
 import config  # noqa: E402
-from src.data import extract_tags  # noqa: E402
+from src.data import extrair_tags  # noqa: E402
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dataset", default=config.HF_DATASET)
-    ap.add_argument("--n-train", type=int, default=config.N_TRAIN_IMAGES)
-    ap.add_argument("--n-val", type=int, default=config.N_VAL_IMAGES)
+    ap.add_argument("--dataset", default=config.DATASET_HF)
+    ap.add_argument("--n-train", type=int, default=config.N_IMAGENS_TREINO)
+    ap.add_argument("--n-val", type=int, default=config.N_IMAGENS_VAL)
     ap.add_argument("--max-side", type=int, default=512, help="redimensiona o maior lado (economiza disco)")
     args = ap.parse_args()
 
-    config.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-    records = []
-    for hf_split, split, n in (("train", "train", args.n_train), ("validation", "val", args.n_val)):
+    config.DIR_IMAGENS.mkdir(parents=True, exist_ok=True)
+    registros = []
+    for divisao_hf, divisao, n in (("train", "train", args.n_train), ("validation", "val", args.n_val)):
         if n <= 0:
             continue
         # streaming=True evita baixar o dataset inteiro (~1.1 GB)
-        ds = load_dataset(args.dataset, split=hf_split, streaming=True)
-        for i, ex in enumerate(tqdm(ds.take(n), total=n, desc=f"Baixando {split}")):
+        ds = load_dataset(args.dataset, split=divisao_hf, streaming=True)
+        for i, ex in enumerate(tqdm(ds.take(n), total=n, desc=f"Baixando {divisao}")):
             # o campo "filename" do dataset não é único -> nome pelo índice
-            name = f"{split}_{i:05d}.jpg"
+            nome_arquivo = f"{divisao}_{i:05d}.jpg"
             img = ex["image"].convert("RGB")
             img.thumbnail((args.max_side, args.max_side))
-            img.save(config.IMAGES_DIR / name, quality=90)
-            captions = ex["caption"] if isinstance(ex["caption"], list) else [ex["caption"]]
-            captions = [c.strip() for c in captions if c and c.strip()]
-            records.append({
-                "image": f"images/{name}",
-                "captions": captions,
-                "tags": extract_tags(captions),
-                "split": split,
+            img.save(config.DIR_IMAGENS / nome_arquivo, quality=90)
+            legendas = ex["caption"] if isinstance(ex["caption"], list) else [ex["caption"]]
+            legendas = [c.strip() for c in legendas if c and c.strip()]
+            registros.append({
+                "image": f"images/{nome_arquivo}",
+                "captions": legendas,
+                "tags": extrair_tags(legendas),
+                "split": divisao,
             })
 
-    with open(config.CAPTIONS_FILE, "w", encoding="utf-8") as f:
-        for r in records:
+    with open(config.ARQUIVO_LEGENDAS, "w", encoding="utf-8") as f:
+        for r in registros:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    n_tr = sum(r["split"] == "train" for r in records)
-    print(f"✅ {len(records)} imagens ({n_tr} treino / {len(records) - n_tr} val) em {config.RAW_DIR}")
+    n_tr = sum(r["split"] == "train" for r in registros)
+    print(f"✅ {len(registros)} imagens ({n_tr} treino / {len(registros) - n_tr} val) em {config.DIR_BRUTOS}")
 
 
 if __name__ == "__main__":

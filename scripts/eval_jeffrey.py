@@ -16,9 +16,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data import load_records  # noqa: E402
+from src.data import carregar_registros  # noqa: E402
 from src.jeffrey_chat import JeffreyChat, norm  # noqa: E402
-from src.persona import load_facts  # noqa: E402
+from src.persona import carregar_fatos  # noqa: E402
 
 CASOS = [
     # uso
@@ -72,14 +72,14 @@ CASOS = [
 
 
 def main() -> None:
-    verbose = "-v" in sys.argv
-    jeff = JeffreyChat(load_records(), facts=load_facts())
+    detalhado = "-v" in sys.argv
+    jeff = JeffreyChat(carregar_registros(), fatos=carregar_fatos())
     erros = 0
     for pergunta, esperado in CASOS:
-        resposta, _ = jeff.reply(pergunta, None)
+        resposta, _ = jeff.responder(pergunta, None)
         ok = norm(esperado) in norm(resposta)
         erros += not ok
-        if verbose or not ok:
+        if detalhado or not ok:
             print(f"{'ok  ' if ok else 'ERRO'} {pergunta}\n     → {resposta[:140]}")
     n = len(CASOS)
     print(f"\nJeffrey (regras): {n - erros}/{n} respostas certas ({100 * (n - erros) / n:.0f}%)")
