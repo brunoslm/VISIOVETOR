@@ -173,11 +173,30 @@ footer:not(.vv-footer) { display: none !important; }
 .vv-empty code { font-size: 13px; padding: 2px 6px; border-radius: 6px; background: var(--vv-soft); }
 
 /* ---------- rodapé ---------- */
-.vv-footer {
-  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 48px; padding-top: 20px;
-  border-top: 1px solid var(--vv-border); font-size: 13px; color: var(--vv-text);
+.vv-footer { margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--vv-border); font-size: 14px; color: var(--vv-text); }
+.vv-foot-grid { display: grid; gap: 32px; grid-template-columns: 1fr; }
+@media (min-width: 768px) { .vv-foot-grid { grid-template-columns: 1.4fr 1fr 1fr; gap: 48px; } }
+.vv-foot-brand p { margin: 12px 0 0 !important; max-width: 42ch; line-height: 1.7; color: var(--vv-muted); text-wrap: pretty; }
+.vv-foot-status { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 9999px;
+  font-size: 12px !important; font-variant-numeric: tabular-nums; background: var(--vv-soft); color: var(--vv-text) !important; }
+.vv-foot-title { margin: 0 0 12px !important; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--vv-muted); }
+.vv-footer ul { margin: 0 !important; padding: 0 !important; list-style: none; display: grid; gap: 6px; }
+.vv-footer li { margin: 0 !important; }
+.vv-foot-tech li { line-height: 1.6; color: var(--vv-muted); }
+.vv-foot-link, .vv-foot-top {
+  display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; margin: 0 -8px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--vv-text); font: inherit; text-align: left; cursor: pointer; transition: background .15s, color .15s;
 }
-.vv-footer strong { font-weight: 600; }
+.vv-foot-link:hover, .vv-foot-top:hover { background: var(--vv-soft); }
+.vv-foot-link .vv-muted { font-size: 13px; }
+@media (max-width: 420px) { .vv-foot-link .vv-muted { display: none; } }
+.vv-foot-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--vv-border); font-size: 13px; color: var(--vv-muted);
+}
+.vv-foot-math { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12.5px; color: var(--vv-text); }
+.vv-foot-top { margin: 0; font-size: 13px; color: var(--vv-muted); }
+.vv-foot-top:hover { color: var(--vv-text); }
 
 /* ---------- movimento reduzido ---------- */
 @media (prefers-reduced-motion: reduce) {
@@ -236,14 +255,112 @@ footer:not(.vv-footer) { display: none !important; }
 .vv-jeffrey-steps ol { margin: 6px 0 0 !important; padding-left: 20px !important; line-height: 1.6; }
 @keyframes vv-in { from { transform: translateY(4px); } to { transform: none; } }
 
-/* ---------- chat com o Jeffrey (logo abaixo da fala dele) ---------- */
+/* ---------- chat com o Jeffrey: visual de app de mensagens ---------- */
 .vv-chat {
-  margin-top: -4px !important; border-radius: 16px !important; overflow: hidden;
-  background: var(--vv-card) !important; box-shadow: 0 0 0 1px var(--vv-ring) !important; border: 0 !important;
+  --vv-me: #0284c7; --vv-me-text: #fff; --vv-them: #f4f4f5; --vv-them-text: #18181b; --vv-chat-bg: #fafafa;
+  margin-top: -4px !important; border-radius: 20px !important; overflow: hidden; gap: 0 !important;
+  background: var(--vv-card) !important; box-shadow: 0 0 0 1px var(--vv-ring), 0 1px 2px rgba(9,9,11,.04) !important; border: 0 !important;
 }
-.vv-chat-log { border: 0 !important; background: transparent !important; border-bottom: 1px solid var(--vv-ring) !important; }
-.vv-chat-log .message { font-size: 14px !important; line-height: 1.6 !important; white-space: pre-line; }
-.vv-chat-input { padding: 8px !important; gap: 8px !important; background: var(--vv-card) !important; }
-.vv-chat-input textarea { font-size: 14px !important; }
+.dark .vv-chat { --vv-me: #0ea5e9; --vv-them: #27272a; --vv-them-text: #fafafa; --vv-chat-bg: #111113; box-shadow: 0 0 0 1px var(--vv-ring) !important; }
+
+/* cabeçalho: avatar, nome e status */
+.vv-chat-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--vv-ring); color: var(--vv-text); }
+.vv-chat-avatar { display: block; flex: none; width: 36px; height: 36px; border-radius: 9999px; overflow: hidden; }
+.vv-chat-avatar svg { display: block; width: 100%; height: 100%; }
+.vv-chat-name { margin: 0 !important; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.vv-chat-status { margin: 0 !important; font-size: 12px; line-height: 1.3; color: var(--vv-muted); }
+
+/* área das mensagens */
+.vv-chat-log { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--vv-chat-bg) !important; }
+.vv-chat-log .bubble-wrap { background: var(--vv-chat-bg) !important; padding: 12px 4px 4px !important; }
+.vv-chat-log .message-wrap { margin-bottom: 8px !important; }
+.vv-chat-log .message-row.bubble { margin: 4px 12px !important; animation: vv-pop .25s var(--vv-ease-spring); }
+.vv-chat-log .message-row.bubble.bot-row { max-width: min(80%, 620px) !important; }
+.vv-chat-log .message-row.bubble.user-row { max-width: min(75%, 520px) !important; }
+.vv-chat-log .bubble.with-avatar, .vv-chat-log .with_avatar.bot-row { margin-left: 12px !important; }
+
+/* balões: azul para você, cinza para o Jeffrey, com um canto "de rabinho" */
+.vv-chat-log .user, .vv-chat-log .bot {
+  width: fit-content !important; max-width: 100%; padding: 9px 14px !important; border: 0 !important; box-shadow: none !important;
+  font-size: 14px !important; line-height: 1.55 !important;
+}
+.vv-chat-log .user { background: var(--vv-me) !important; color: var(--vv-me-text) !important; border-radius: 18px 18px 4px 18px !important; margin-left: auto; }
+.vv-chat-log .bot { background: var(--vv-them) !important; color: var(--vv-them-text) !important; border-radius: 18px 18px 18px 4px !important; }
+.vv-chat-log .user *, .vv-chat-log .user .prose { color: inherit !important; }
+.vv-chat-log .bot .prose { color: var(--vv-them-text) !important; }
+.vv-chat-log .message .prose, .vv-chat-log .message .prose p { font-size: 14px !important; line-height: 1.55 !important; margin: 0 !important; }
+.vv-chat-log .message .prose p + p, .vv-chat-log .message .prose ul, .vv-chat-log .message .prose ol { margin-top: 6px !important; }
+.vv-chat-log .message .prose ul, .vv-chat-log .message .prose ol { padding-left: 18px !important; }
+.vv-chat-log .message .prose code { font-size: 12.5px; padding: 1px 5px; border-radius: 5px; background: rgba(9,9,11,.06); }
+.dark .vv-chat-log .message .prose code { background: rgba(255,255,255,.08); }
+
+/* avatar do Jeffrey ao lado dos balões dele */
+.vv-chat-log .avatar-container { width: 28px !important; height: 28px !important; border: 0 !important; align-self: flex-end !important; margin-right: 8px !important; }
+.vv-chat-log .avatar-container img { padding: 0 !important; }
+
+/* "digitando…" */
+.vv-typing { display: inline-flex; gap: 4px; align-items: center; height: 20px; padding: 0 2px; }
+.vv-typing i { width: 7px; height: 7px; border-radius: 9999px; background: currentColor; opacity: .35; animation: vv-dots 1.2s infinite ease-in-out; }
+.vv-typing i:nth-child(2) { animation-delay: .15s; } .vv-typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes vv-dots { 0%, 60%, 100% { transform: translateY(0); opacity: .35; } 30% { transform: translateY(-4px); opacity: .9; } }
+@keyframes vv-pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* caixa de mensagem: pílula + botão enviar */
+.vv-chat-input { padding: 10px 12px !important; gap: 8px !important; background: var(--vv-card) !important; border-top: 1px solid var(--vv-ring); align-items: center !important; }
+.vv-chat-box textarea {
+  font-size: 14px !important; border-radius: 9999px !important; padding: 10px 16px !important;
+  background: var(--vv-soft) !important; border: 1px solid transparent !important; box-shadow: none !important;
+}
+.vv-chat-box textarea:focus { background: var(--vv-card) !important; border-color: var(--vv-me) !important; box-shadow: 0 0 0 3px rgba(14,165,233,.15) !important; }
+.vv-chat-send {
+  border-radius: 9999px !important; min-height: 40px !important; height: 40px; padding: 0 18px !important;
+  background: var(--vv-me) !important; border-color: var(--vv-me) !important; color: #fff !important;
+}
+.vv-chat-send:hover { filter: brightness(1.08); }
 .vv-chat-chips { margin-top: -4px !important; }
 .vv-chat-chips .vv-chip { font-size: 12.5px !important; }
+
+/* ---------- como funciona: 3 passos ligados por setas ---------- */
+.vv-how { margin: 32px 0 8px; }
+.vv-steps { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.vv-step {
+  display: flex; gap: 12px; align-items: flex-start; flex: 1 1 0; min-width: 0; padding: 16px; border-radius: 16px;
+  background: var(--vv-card); box-shadow: 0 0 0 1px var(--vv-ring), 0 1px 2px rgba(9,9,11,.04);
+  transition: transform .2s var(--vv-ease-spring), box-shadow .2s ease-out;
+}
+.dark .vv-step { box-shadow: 0 0 0 1px var(--vv-ring); }
+.vv-step:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--vv-ring), 0 12px 24px -12px rgba(9,9,11,.18); }
+.vv-step-num {
+  display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 9999px;
+  font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: #fff;
+}
+.vv-step-sky { background: #0284c7; box-shadow: 0 0 0 4px rgba(14,165,233,.15); }
+.vv-step-violet { background: #7c3aed; box-shadow: 0 0 0 4px rgba(139,92,246,.15); }
+.vv-step-teal { background: #0d9488; box-shadow: 0 0 0 4px rgba(20,184,166,.15); }
+.dark .vv-step-sky { background: #0ea5e9; } .dark .vv-step-violet { background: #8b5cf6; } .dark .vv-step-teal { background: #14b8a6; }
+.vv-step-title { margin: 6px 0 2px !important; font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--vv-text); }
+.vv-step-desc { margin: 0 !important; font-size: 13.5px; line-height: 1.6; color: var(--vv-muted); text-wrap: pretty; }
+.vv-step-arrow { display: grid; place-items: center; flex: none; color: var(--vv-muted); }
+.vv-step-arrow svg { width: 20px; height: 20px; transform: rotate(90deg); }
+@media (min-width: 768px) {
+  .vv-steps { flex-direction: row; align-items: center; gap: 12px; }
+  .vv-step { align-self: stretch; }
+  .vv-step-arrow svg { transform: none; }
+}
+/* rodapé: neutraliza o estilo padrão de botão do Gradio */
+.vv-footer .vv-foot-link, .vv-footer .vv-foot-top { background: transparent !important; box-shadow: none !important; border: 0 !important; }
+.vv-footer .vv-foot-link:hover, .vv-footer .vv-foot-top:hover { background: var(--vv-soft) !important; }
+.vv-foot-brand .vv-foot-status { max-width: none; white-space: nowrap; }
+.vv-foot-bar, .vv-foot-bar > span:first-child { color: var(--vv-muted) !important; }
+@media (max-width: 420px) { .vv-foot-brand .vv-foot-status { white-space: normal; border-radius: 12px; align-items: baseline; } }
+.vv-chat-log .message .prose p { white-space: pre-line; }
+.vv-chat-log .prose.chatbot.md, .vv-chat-log .message .prose { opacity: 1 !important; }
+.vv-chat > .html-container, .vv-chat .block:has(.vv-chat-head), .vv-chat-head { background: var(--vv-card) !important; }
+.vv-chat-log .message-row, .vv-chat-log .message, .vv-chat-log .user, .vv-chat-log .bot, .vv-chat-log .message-wrap .prose { opacity: 1 !important; }
+
+/* título "Converse com o Jeffrey" acima do chat */
+.vv-chat-intro { margin-top: 16px !important; }
+.vv-chat-intro .vv-section h2 { font-size: 20px; }
+/* painel do Jeffrey com o mesmo avatar do chat */
+.vv-jeffrey-avatar, .dark .vv-jeffrey-avatar { background: none !important; overflow: hidden; }
+.vv-jeffrey-avatar svg { display: block; width: 100%; height: 100%; }

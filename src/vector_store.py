@@ -28,6 +28,22 @@ class VectorStore:
     def __post_init__(self) -> None:
         if len(self.vectors) != len(self.metadata):
             raise ValueError("vectors e metadata devem ter o mesmo tamanho")
+        self._tag_masks: dict[str, np.ndarray] | None = None
+
+    def _tag_mask(self, tags: list[str] | None) -> np.ndarray:
+        """Máscara booleana (N,) dos itens que têm TODAS as tags. Máscaras por tag ficam em cache."""
+        mask = np.ones(len(self), dtype=bool)
+        if not tags:
+            return mask
+        if self._tag_masks is None:
+            masks: dict[str, np.ndarray] = {}
+            for i, m in enumerate(self.metadata):
+                for t in m.get("tags", []):
+                    masks.setdefault(t, np.zeros(len(self), dtype=bool))[i] = True
+            self._tag_masks = masks
+        for t in set(tags):
+            mask &= self._tag_masks.get(t, np.zeros(len(self), dtype=bool))
+        return mask
 
     def __len__(self) -> int:
         return len(self.metadata)
@@ -40,6 +56,7 @@ class VectorStore:
         vectors /= np.linalg.norm(vectors, axis=1, keepdims=True).clip(min=1e-12)
         self.vectors = np.vstack([self.vectors, vectors]) if len(self) else vectors
         self.metadata.extend(metadata)
+        self._tag_masks = None  # catálogo mudou: refaz as máscaras na próxima busca
 
     # -- leitura -------------------------------------------------------------
     def search(
@@ -56,10 +73,7 @@ class VectorStore:
         q /= max(float(np.linalg.norm(q)), 1e-12)
         scores = self.vectors @ q  # (N,)
 
-        mask = np.ones(len(self), dtype=bool)
-        if tags:
-            wanted = set(tags)
-            mask &= np.array([wanted.issubset(m.get("tags", [])) for m in self.metadata])
+        mask = self._tag_mask(tags)
         if exclude:
             mask[list(exclude)] = False
 
@@ -73,10 +87,7 @@ class VectorStore:
 
     def count_with_tags(self, tags: list[str] | None) -> int:
         """Quantos itens passam pelo filtro de tags (todas precisam estar presentes)."""
-        if not tags:
-            return len(self)
-        wanted = set(tags)
-        return sum(wanted.issubset(m.get("tags", [])) for m in self.metadata)
+        return int(self._tag_mask(tags).sum())
 
     def all_tags(self) -> list[str]:
         return sorted({t for m in self.metadata for t in m.get("tags", [])})

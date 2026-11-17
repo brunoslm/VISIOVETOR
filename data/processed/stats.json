@@ -3,27 +3,27 @@
   "seed": 42,
   "modelo_base": "google/siglip2-base-patch16-224",
   "metricas_citadas": {
-    "t2i_R@1_base": 75.53333333333333,
-    "t2i_R@1_ajustado": 80.33333333333333
+    "t2i_R@1_base": 66.16,
+    "t2i_R@1_ajustado": 72.1
   },
   "arquivos": [
     {
       "arquivo": "identidade.jsonl",
       "formato": "chat",
-      "exemplos": 79,
-      "palavras_resposta": 21.848101265822784
+      "exemplos": 97,
+      "palavras_resposta": 23.938144329896907
     },
     {
       "arquivo": "conhecimento_projeto.jsonl",
       "formato": "chat",
-      "exemplos": 64,
-      "palavras_resposta": 47.4375
+      "exemplos": 124,
+      "palavras_resposta": 42.774193548387096
     },
     {
       "arquivo": "limites.jsonl",
       "formato": "chat",
-      "exemplos": 29,
-      "palavras_resposta": 35.93103448275862
+      "exemplos": 38,
+      "palavras_resposta": 33.578947368421055
     },
     {
       "arquivo": "comportamento.jsonl",
@@ -34,8 +34,8 @@
     {
       "arquivo": "treino_chat.jsonl",
       "formato": "chat",
-      "exemplos": 17,
-      "palavras_resposta": 29.794871794871796
+      "exemplos": 19,
+      "palavras_resposta": 29.53488372093023
     },
     {
       "arquivo": "suporte_tecnico.jsonl",
@@ -46,14 +46,14 @@
     {
       "arquivo": "uso_do_app.jsonl",
       "formato": "chat",
-      "exemplos": 27,
-      "palavras_resposta": 41.44444444444444
+      "exemplos": 50,
+      "palavras_resposta": 41
     },
     {
       "arquivo": "conceitos_ia.jsonl",
       "formato": "chat",
-      "exemplos": 35,
-      "palavras_resposta": 45.08571428571429
+      "exemplos": 67,
+      "palavras_resposta": 44.343283582089555
     },
     {
       "arquivo": "seguranca.jsonl",
@@ -65,7 +65,7 @@
       "arquivo": "explicacao_resultados.jsonl",
       "formato": "chat",
       "exemplos": 80,
-      "palavras_resposta": 128.45
+      "palavras_resposta": 127.975
     },
     {
       "arquivo": "imagem_para_imagem.jsonl",
@@ -77,7 +77,7 @@
       "arquivo": "imagem_para_texto.jsonl",
       "formato": "chat",
       "exemplos": 50,
-      "palavras_resposta": 80.36
+      "palavras_resposta": 80.28
     },
     {
       "arquivo": "refinamento_busca.jsonl",
@@ -95,13 +95,13 @@
       "arquivo": "comparacao_modelos.jsonl",
       "formato": "chat",
       "exemplos": 40,
-      "palavras_resposta": 72.225
+      "palavras_resposta": 73.35
     },
     {
       "arquivo": "conversas_geradas.jsonl",
       "formato": "chat",
       "exemplos": 40,
-      "palavras_resposta": 47.333333333333336
+      "palavras_resposta": 47.94326241134752
     },
     {
       "arquivo": "treino_instrucao.jsonl",
@@ -113,41 +113,41 @@
       "arquivo": "preferencias_dpo.jsonl",
       "formato": "preferência",
       "exemplos": 266,
-      "palavras_resposta": 50.443609022556394
+      "palavras_resposta": 44.04887218045113
     },
     {
       "arquivo": "jeffrey_sft_train.jsonl",
       "formato": "chat",
-      "exemplos": 653,
-      "palavras_resposta": 54.58115183246073
+      "exemplos": 783,
+      "palavras_resposta": 52.314732142857146
     },
     {
       "arquivo": "jeffrey_sft_val.jsonl",
       "formato": "chat",
-      "exemplos": 73,
-      "palavras_resposta": 55.27058823529412
+      "exemplos": 87,
+      "palavras_resposta": 51.94949494949495
     },
     {
       "arquivo": "jeffrey_dpo_train.jsonl",
       "formato": "preferência",
       "exemplos": 239,
-      "palavras_resposta": 49.37238493723849
+      "palavras_resposta": 43.55230125523013
     },
     {
       "arquivo": "jeffrey_dpo_val.jsonl",
       "formato": "preferência",
       "exemplos": 27,
-      "palavras_resposta": 59.925925925925924
+      "palavras_resposta": 48.44444444444444
     }
   ],
   "tipos_rejeicao_dpo": {
     "manual": 16,
-    "grosseria": 37,
-    "certeza": 45,
-    "ingles": 43,
-    "seco": 32,
-    "emoji": 49,
-    "nome_errado": 27,
-    "numeros": 17
+    "nome_errado": 41,
+    "ingles": 39,
+    "grosseria": 41,
+    "certeza": 53,
+    "emoji": 38,
+    "seco": 27,
+    "numeros": 11
   }
 }

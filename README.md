@@ -87,22 +87,43 @@ Nos dois casos, a diagonal contém os pares corretos e o resto do lote funciona 
 
 A primeira versão usava o CLIP original da OpenAI (`openai/clip-vit-base-patch32`), treinado quase só em inglês. Buscas como "um gato" traziam cachorros e "duas pessoas se abraçando" trazia artes marciais. Trocar por um modelo **multilíngue** foi a maior melhora, maior que qualquer fine-tuning:
 
-| Validação (300 imagens, 1500 legendas; treino com 2000 imagens) | CLIP B/32 | CLIP B/32 ajustado | SigLIP 2 base | **SigLIP 2 ajustado** |
+| Validação (1000 imagens, 5000 legendas; treino com 6000 imagens) | CLIP B/32 | CLIP B/32 ajustado | SigLIP 2 base | **SigLIP 2 ajustado** |
 |---|---:|---:|---:|---:|
-| Texto→Imagem R@1 | 19,7 | 42,0 | 75,5 | **80,3** |
-| Texto→Imagem R@5 | 41,5 | 74,5 | 95,0 | **97,3** |
-| Texto→Imagem R@10 | 51,0 | 85,3 | 98,4 | **99,1** |
-| Imagem→Texto R@1 | 34,7 | 54,7 | 89,3 | **90,3** |
-| Imagem→Texto R@5 | 59,7 | 87,7 | 98,0 | **99,0** |
-| Imagem→Texto R@10 | 70,3 | 93,3 | 99,7 | **99,7** |
+| Texto→Imagem R@1 | 10,8 | 28,4 | 66,2 | **72,1** |
+| Texto→Imagem R@5 | 25,2 | 56,3 | 87,6 | **91,7** |
+| Texto→Imagem R@10 | 34,1 | 69,5 | 93,3 | **96,1** |
+| Imagem→Texto R@1 | 25,2 | 40,6 | 82,5 | **87,9** |
+| Imagem→Texto R@5 | 47,1 | 71,4 | 96,0 | **97,6** |
+| Imagem→Texto R@10 | 56,3 | 81,1 | 98,5 | **99,0** |
 
 *R@K = % de consultas em que o item correto aparece entre os K primeiros.*
 
-> Essas métricas (e o modelo em `models/ptbr-finetuned/`) vêm de um treino com 2000 imagens de treino e 300 de validação. O `prepare_data.py` agora baixa 6000 + 1000, então re-treinar leva mais tempo e gera números diferentes; o `metrics.json` novo substitui o atual.
+> Todas as colunas foram medidas na mesma validação. O CLIP ajustado é da primeira versão do projeto (treinado com 2000 imagens). Um SigLIP 2 ajustado só com 2000 imagens chega a 70,8 de R@1 texto→imagem: triplicar os dados rendeu +1,3 ponto. A validação maior (1000 imagens em vez de 300) deixa a tarefa mais difícil, por isso os números são menores que os de versões anteriores deste README.
+
+### Como ler o ganho do fine-tuning
+
+O R@1 texto→imagem foi de **66,2% para 72,1%** (+5,9 pontos). Em pontos parece pouco, mas o modelo base já acertava 2 de cada 3 buscas: o que importa é quanto do **erro que sobrava** foi eliminado.
+
+| Métrica | Erro do base | Erro do ajustado | Erros eliminados |
+|---|---:|---:|---:|
+| Texto→Imagem R@1 | 33,8% | 27,9% | **−18%** |
+| Texto→Imagem R@10 | 6,7% | 3,9% | **−42%** |
+| Imagem→Texto R@1 | 17,5% | 12,1% | **−31%** |
+
+Por que o ganho é limitado (e esperado):
+
+* **O ponto de partida já é forte.** O SigLIP 2 foi pré-treinado em bilhões de pares imagem-texto em vários idiomas, incluindo português. O ajuste não ensina o idioma; só aproxima o modelo do estilo das legendas do Flickr8k ("um menino de camisa vermelha pula na piscina").
+* **Pouco dado.** 6000 imagens é muito pouco perto do pré-treino. A curva confirma que já estamos perto do teto desse volume: triplicar os dados (2000 → 6000) rendeu só +1,3 ponto.
+* **Ajuste leve, de propósito.** O encoder de visão fica congelado e só as últimas 4 camadas do texto treinam. Isso evita *catastrophic forgetting* (perder o conhecimento geral do pré-treino) e permite treinar em CPU.
+* **A maior parte do ganho vem na 1ª época.** R@1: 66,2 → 71,1 (época 1) → 71,8 → 72,1 → 72,1. Depois disso o modelo satura, então mais épocas não ajudam.
+
+Comparação útil: no CLIP original, que quase não entende português, o mesmo fine-tuning foi de 10,8 para 28,4 de R@1 (2,6×). Fine-tuning rende muito quando o modelo não conhece o domínio e pouco quando já conhece. Por isso **trocar o modelo base foi a decisão mais importante do projeto**, e o ajuste é o refinamento final.
+
+Próximos passos que devem render mais que mais épocas: liberar algumas camadas finais do encoder de visão, usar *hard negatives* (legendas parecidas de imagens diferentes no mesmo lote) e treinar com uma base maior (ex.: Flickr30k com legendas em português, ~4× mais imagens).
 
 ### Estratégia de fine-tuning
 
-Leve, para rodar **em CPU**: ~7 minutos com 2000 imagens de treino (fora a vetorização inicial das imagens), proporcionalmente mais com as 6000 padrão:
+Leve, para rodar **em CPU em ~23 minutos** com as 6000 imagens de treino (fora a vetorização inicial das imagens):
 
 | Componente | Status |
 |---|---|
@@ -249,7 +270,7 @@ python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
 python scripts/prepare_data.py            # ~500 MB, Flickr8k completo: 6000 treino + 1000 val
-python scripts/finetune.py                # em CPU: ~7 min por 2000 imagens de treino
+python scripts/finetune.py                # ~25 min em CPU (6000 imagens)
 python scripts/build_index.py             # vetoriza o catálogo
 python app.py
 ```

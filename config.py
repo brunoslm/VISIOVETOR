@@ -21,7 +21,7 @@ MODELS_DIR = ROOT_DIR / "models"
 # Modelos
 # ---------------------------------------------------------------------------
 # SigLIP 2 é multilíngue e entende português muito melhor que o CLIP original da OpenAI
-# (validação Flickr8k PT-BR, texto→imagem R@1: CLIP B/32 19,7% | SigLIP 2 base 75,5%).
+# (validação Flickr8k PT-BR, 1000 imagens, texto→imagem R@1: CLIP B/32 10,8% | SigLIP 2 base 66,2%).
 # Qualquer modelo da família CLIP/SigLIP do Hub funciona, ex.: "openai/clip-vit-base-patch32".
 BASE_MODEL = os.getenv("VISIOVETOR_BASE_MODEL", "google/siglip2-base-patch16-224")
 FINETUNED_MODEL_DIR = MODELS_DIR / "ptbr-finetuned"

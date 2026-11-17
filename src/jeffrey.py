@@ -1,7 +1,7 @@
 """Jeffrey narra as buscas: o que foi feito e como ler os resultados.
 
 Usado em dois lugares, com o mesmo texto:
-  * app.py  -> painel do Jeffrey acima da galeria (HTML);
+  * app.py  -> painel do Jeffrey logo abaixo dos resultados (HTML);
   * scripts/generate_dataset.py -> respostas dos datasets de alinhamento (texto).
 
 Tudo aqui é determinístico e baseado só nos números reais da busca: o Jeffrey
@@ -16,8 +16,12 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from html import escape
+from pathlib import Path
 
 from src.persona import NAME, fmt
+
+# mesmo avatar do chat
+_AVATAR = (Path(__file__).with_name("assets") / "jeffrey.svg").read_text(encoding="utf-8").strip()
 
 STOP = set("""a o os as um uma uns umas de da do das dos em na no nas nos num numa e é ao à com por para pela pelo
 que se sua seu suas seus está estão enquanto outro outra outros outras como mais muito sobre entre até lá
@@ -67,7 +71,7 @@ class Narration:
                      f'<ol>{items}</ol></details>')
         body = "".join(f"<p>{escape(p)}</p>" for p in self.body)
         return (f'<div class="vv-jeffrey vv-jeffrey-{self.tone}" role="status" aria-live="polite">'
-                f'<div class="vv-jeffrey-avatar" aria-hidden="true">J</div>'
+                f'<div class="vv-jeffrey-avatar" aria-hidden="true">{_AVATAR}</div>'
                 f'<div class="vv-jeffrey-content"><p class="vv-jeffrey-name">{NAME}'
                 f'<span>assistente do VisioVetor</span></p>{body}{steps}</div></div>')
 

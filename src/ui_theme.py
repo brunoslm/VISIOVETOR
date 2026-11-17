@@ -126,6 +126,7 @@ _ICONS = {
     "scan": '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/>',
     "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
     "moon": '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    "arrow-up": '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
     "monitor": '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
 }
 
@@ -168,7 +169,39 @@ def hero_html(n_images: int, n_captions: int, n_tags: int, device: str, gain_r1:
   <p class="vv-lead">Imagens e textos no mesmo espaço vetorial de {dim} dimensões, com
   <code class="vv-code">{escape(model_name)}</code> ajustado para português. Sem tags manuais: a busca entende a descrição.</p>
   <dl class="vv-stats">{stats_html}</dl>
+  {how_it_works_html()}
 </header>"""
+
+
+_STEPS = (
+    ("sky", "Escolha o modo",
+     "Use as abas abaixo: buscar por texto, por imagem parecida, descrever uma foto ou comparar modelos."),
+    ("violet", "Descreva ou envie",
+     "Escreva a cena em português (ex.: “crianças brincando na água”) ou solte uma imagem. Tags refinam o filtro."),
+    ("teal", "Veja e converse",
+     "Os resultados chegam ordenados por similaridade. O Jeffrey explica o porquê e responde suas perguntas."),
+)
+
+
+def how_it_works_html() -> str:
+    """Faixa 'Como funciona': 3 passos numerados ligados por setas."""
+    arrow = ('<li class="vv-step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" '
+             'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+             '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></li>')
+    items = []
+    for i, (color, title, desc) in enumerate(_STEPS, 1):
+        if i > 1:
+            items.append(arrow)
+        items.append(f"""
+    <li class="vv-step">
+      <span class="vv-step-num vv-step-{color}">{i}</span>
+      <div><p class="vv-step-title">{escape(title)}</p><p class="vv-step-desc">{escape(desc)}</p></div>
+    </li>""")
+    return f"""
+  <section class="vv-how" aria-labelledby="vv-how-title">
+    <p class="vv-eyebrow" id="vv-how-title"><span class="vv-dot vv-violet"></span>Como funciona</p>
+    <ol class="vv-steps">{''.join(items)}</ol>
+  </section>"""
 
 
 # Liga o seletor Claro / Escuro / Sistema. "Sistema" é o padrão (nada salvo).
@@ -237,8 +270,82 @@ def metrics_html(m: dict | None) -> str:
 </div>"""
 
 
-FOOTER_HTML = """
+# Mesmo avatar dos balões do chat (src/assets/jeffrey.svg), embutido no HTML
+JEFF_SVG = (Path(__file__).with_name("assets") / "jeffrey.svg").read_text(encoding="utf-8").strip()
+
+CHAT_HEADER = f"""
+<div class="vv-chat-head">
+  <span class="vv-chat-avatar" aria-hidden="true">{JEFF_SVG}</span>
+  <div><p class="vv-chat-name">Jeffrey</p><p class="vv-chat-status">Assistente do VisioVetor</p></div>
+</div>"""
+
+_CHAT_INTRO = {
+    "texto": "Pergunte por que uma foto ficou em 1º, o que o score significa ou como refinar a busca.",
+    "imagem": "Pergunte por que essas fotos são parecidas ou peça para ele comentar uma posição específica.",
+    "descrever": "Pergunte como ler a classificação zero-shot ou por que uma legenda ficou mais perto da foto.",
+    "comparar": "Pergunte qual modelo foi melhor nesta busca ou por que os resultados mudaram.",
+}
+
+
+def chat_intro_html(kind: str) -> str:
+    return section_html("sky", "Assistente", "Converse com o Jeffrey", _CHAT_INTRO.get(kind, _CHAT_INTRO["texto"]))
+
+
+_FOOTER_MODES = (
+    ("sky", "Texto → Imagem", "Busca por descrição"),
+    ("violet", "Imagem → Imagem", "Similaridade visual"),
+    ("teal", "Imagem → Texto", "Descrição automática"),
+    ("amber", "Base × Ajustado", "Ganho do fine-tuning"),
+)
+
+
+def footer_html(model_name: str, dim: int, device: str, n_images: int) -> str:
+    modes = "".join(
+        f'<li><button type="button" class="vv-foot-link" data-vv-tab="{escape(tab)}">'
+        f'<span class="vv-dot vv-{c}"></span><span>{escape(tab)}</span>'
+        f'<span class="vv-muted">· {escape(desc)}</span></button></li>'
+        for c, tab, desc in _FOOTER_MODES
+    )
+    tech = "".join(f"<li>{t}</li>" for t in (
+        f'<code class="vv-code">{escape(model_name)}</code>',
+        "PyTorch + Hugging Face Transformers",
+        "Busca vetorial em NumPy (Q · Vᵀ)",
+        "Interface em Gradio",
+    ))
+    return f"""
 <footer class="vv-footer">
-  <span><strong>VisioVetor</strong> · SigLIP 2 / CLIP + Hugging Face Transformers + PyTorch</span>
-  <span class="vv-muted">Similaridade de cosseno sobre vetores normalizados (Q · Vᵀ)</span>
+  <div class="vv-foot-grid">
+    <div class="vv-foot-brand">
+      <span class="vv-brand"><span class="vv-logo">{icon("scan")}</span>VisioVetor</span>
+      <p>Busca semântica multimodal em português: imagens e textos no mesmo espaço vetorial,
+      comparados por similaridade de cosseno.</p>
+      <p class="vv-foot-status"><span class="vv-dot vv-teal"></span>Rodando em {escape(device.upper())} ·
+      {num(n_images, 0)} imagens · {dim} dimensões</p>
+    </div>
+    <nav aria-label="Modos de busca">
+      <p class="vv-foot-title">Modos</p>
+      <ul>{modes}</ul>
+    </nav>
+    <div>
+      <p class="vv-foot-title">Tecnologia</p>
+      <ul class="vv-foot-tech">{tech}</ul>
+    </div>
+  </div>
+  <div class="vv-foot-bar">
+    <span>Similaridade de cosseno sobre vetores normalizados: <span class="vv-foot-math">sim(q, v) = q̂ · v̂</span></span>
+    <button type="button" class="vv-foot-top" data-vv-top>{icon("arrow-up")}Voltar ao topo</button>
+  </div>
 </footer>"""
+
+
+# Links do rodapé: troca de aba e volta ao topo.
+FOOTER_JS = r"""
+element.querySelectorAll('[data-vv-tab]').forEach((b) => b.addEventListener('click', () => {
+  const tab = [...document.querySelectorAll('.vv-tabs [role="tab"]')]
+    .find((t) => t.textContent.trim() === b.dataset.vvTab);
+  if (!tab) return;
+  tab.click();
+  document.querySelector('.vv-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}));
+element.querySelector('[data-vv-top]')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+"""

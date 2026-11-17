@@ -8,8 +8,8 @@ Sem LLM: as respostas vêm de três fontes, nesta ordem:
      gerais sobre o projeto, IA, erros, limites. A pergunta mais parecida é achada
      por TF-IDF de palavras + trigramas de caracteres (aguenta erro de digitação).
 
-Pedidos como "busca um cachorro na praia" viram uma ação: o app roda a busca e
-atualiza a galeria. Tudo o que o Jeffrey diz sai de números reais do sistema.
+O chat não roda buscas: pedidos como "busca um cachorro na praia" recebem uma dica para
+usar a caixa de busca. Tudo o que o Jeffrey diz sai de números reais do sistema.
 """
 
 from __future__ import annotations
@@ -39,6 +39,18 @@ SUGESTOES = {
     "imagem": ["Por que essas são parecidas?", "Fala da segunda imagem", "O que significa o score?"],
     "descrever": ["Como ler a classificação?", "Por que essa legenda?", "O que é zero-shot?"],
     "comparar": ["Qual modelo foi melhor?", "Por que os resultados mudam?", "O que é fine-tuning?"],
+}
+
+# quando pedem uma busca pelo chat: as buscas ficam na caixa do topo de cada aba
+SEARCH_HINT = {
+    "texto": "Por aqui eu não faço buscas: descreva a cena na caixa lá em cima e clique em Buscar. As imagens "
+             "aparecem logo abaixo, e depois eu comento os resultados com você.",
+    "comparar": "Por aqui eu não faço buscas: escreva a cena na caixa lá em cima e clique em Comparar. Depois eu "
+                "comento as diferenças entre os modelos.",
+    "imagem": "Nesta aba a busca parte de uma foto: envie uma imagem lá em cima e clique em Buscar parecidas. Para "
+              "buscar por descrição, use a aba Texto → Imagem.",
+    "descrever": "Nesta aba a busca parte de uma foto: envie uma imagem lá em cima e clique em Descrever. Para "
+                 "buscar por descrição, use a aba Texto → Imagem.",
 }
 
 ORDINAIS = {"primeir": 1, "segund": 2, "terceir": 3, "quart": 4, "quint": 5, "sext": 6, "setim": 7,
@@ -176,6 +188,7 @@ class JeffreyChat:
         if not m:
             return None
         termo = re.sub(r"\b(no catalogo|no banco|ai|aqui|ae)\b", "", m.group(1)).strip(" ?")
+        termo = re.sub(r"(\s+(tem|tens|existe|existem|ha|possui|voces tem|no total))+$", "", termo).strip()
         termo = " ".join(termo.split()[:3])
         if not termo:
             return None
@@ -197,12 +210,13 @@ class JeffreyChat:
             return (f"Encontrei poucas: {k} {'imagem tem' if k == 1 else 'imagens têm'} \"{termo}\" nas legendas, "
                     f"por exemplo \"{_clean(ex[0])}\". Busque algo parecido com essa descrição para achá-las.")
         return (f"Sim! {fmt(k, 0)} imagens mencionam \"{termo}\" nas legendas, como \"{_clean(ex[0])}\". "
-                f"Quer que eu busque? É só dizer \"busca {termo}\".")
+                f"Para vê-las, busque \"{termo}\" na caixa lá em cima.")
 
     # -- contexto da última busca ----------------------------------------------
     @staticmethod
     def _ordinal(n: str) -> int | None:
-        if (m := re.search(r"\b(primeir|segund|terceir|quart|quint|sext|setim|oitav|non|decim|ultim)[oa]s?\b", n)):
+        if (m := re.search(r"\b(primeir|segund|terceir|quart|quint|sext|setim|oitav|non|decim|ultim)[oa]s?\b"
+                           r"(?!\s+(?:busca|vez|vezes|pesquisa|execucao|carga|troca|epoca|versao))", n)):
             return ORDINAIS[m.group(1)]
         if (m := re.search(r"\b(\d{1,2})\s*(?:º|o|a)\b", n)) or \
            (m := re.search(r"(?:foto|imagem|resultado|legenda|lugar|posicao)\s*(?:n|numero|de numero)?\s*(\d{1,2})\b", n)):
@@ -301,7 +315,7 @@ class JeffreyChat:
         tags = [t for t in self.tag_counts if norm(t) in norm(query).split()]
         if tags and not ctx.get("tags"):
             partes.append(f"Também dá para filtrar pela tag \"{tags[0]}\".")
-        partes.append("Se quiser, me diga \"busca\" seguido da nova descrição que eu rodo aqui mesmo.")
+        partes.append("Ajuste a descrição na caixa de busca lá em cima e clique em Buscar de novo.")
         return " ".join(partes)
 
     def _tags(self, ctx: dict) -> str:
@@ -415,8 +429,8 @@ class JeffreyChat:
         if re.fullmatch(r"(oi+|ola|opa|eae|e ai|hey|bom dia|boa tarde|boa noite|salve)( jeffrey)?( tudo bem)?", n):
             return rng.choice(["Olá! Que bom ter você por aqui. Posso explicar os resultados da sua última busca ou "
                                "tirar dúvidas sobre o VisioVetor.",
-                               "Oi! Tudo ótimo por aqui, obrigado. Em que posso ajudar? Pode perguntar sobre a busca "
-                               "ou pedir uma nova, como \"busca crianças na praia\"."])
+                               "Oi! Tudo ótimo por aqui, obrigado. Em que posso ajudar? Pode perguntar sobre os "
+                               "resultados da busca ou sobre o VisioVetor."])
         if _has(n, r"^(obrigad|valeu|vlw|brigad|muito obrigad|show|top|perfeito|otimo)"):
             return rng.choice(["Por nada! Se quiser, faça outra busca que eu comento os resultados.",
                                "Fico feliz em ajudar! Estou por aqui se surgir outra dúvida."])
@@ -455,12 +469,8 @@ class JeffreyChat:
         msg = (msg or "").strip()
         if not msg:
             return "Pode perguntar! Por exemplo: \"por que essa foi a primeira?\"", None
-        if (q := self.search_request(msg)):
-            if kind in ("texto", "comparar"):
-                verbo = "Comparei" if kind == "comparar" else "Busquei"
-                return f"{verbo} \"{q}\" para você. Atualizei os resultados e comentei no painel acima.", q
-            return ("Nesta aba eu trabalho a partir de uma foto. Para buscar por descrição, use a aba Texto → Imagem: "
-                    "lá é só me dizer \"busca\" e a cena."), None
+        if self.search_request(msg):
+            return SEARCH_HINT.get(kind, SEARCH_HINT["texto"]), None
         for fn in (lambda: self.answer_safety(msg), lambda: self.answer_context(msg, ctx), lambda: self.answer_catalog(msg),
                    lambda: self.answer_smalltalk(msg)):
             if (ans := fn()):

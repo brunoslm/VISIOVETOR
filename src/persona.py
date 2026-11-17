@@ -48,8 +48,8 @@ class Facts:
     best_epoch: int
     text_layers: int
     # comparação histórica com o CLIP original (medida neste projeto, mesma validação)
-    clip_base_t2i_r1: float = 19.7
-    clip_tuned_t2i_r1: float = 42.0
+    clip_base_t2i_r1: float = 10.8
+    clip_tuned_t2i_r1: float = 28.4
 
     def r(self, which: str, key: str) -> str:
         return fmt(getattr(self, which)[key]) + "%"
@@ -61,10 +61,10 @@ class Facts:
 
 _DEFAULT_METRICS = {
     "base_model": "google/siglip2-base-patch16-224",
-    "n_train": 2000, "n_val": 300, "train_seconds": 397.5, "best_epoch": 3,
+    "n_train": 6000, "n_val": 1000, "train_seconds": 1358.8, "best_epoch": 4,
     "args": {"epochs": 4, "text_layers": 4},
-    "baseline": {"t2i_R@1": 75.5, "t2i_R@5": 95.0, "t2i_R@10": 98.4, "i2t_R@1": 89.3, "i2t_R@5": 98.0, "i2t_R@10": 99.7},
-    "best": {"t2i_R@1": 80.3, "t2i_R@5": 97.3, "t2i_R@10": 99.1, "i2t_R@1": 90.3, "i2t_R@5": 99.0, "i2t_R@10": 99.7},
+    "baseline": {"t2i_R@1": 66.2, "t2i_R@5": 87.6, "t2i_R@10": 93.3, "i2t_R@1": 82.5, "i2t_R@5": 96.0, "i2t_R@10": 98.5},
+    "best": {"t2i_R@1": 72.1, "t2i_R@5": 91.7, "t2i_R@10": 96.1, "i2t_R@1": 87.9, "i2t_R@5": 97.6, "i2t_R@10": 99.0},
 }
 
 
