@@ -13,7 +13,7 @@ import config
 from src.catalog import modelos_disponiveis, construir_indices
 from src.embeddings import CodificadorClip
 from src import jeffrey
-from src.data import carregar_registros
+from src.data import baixar_imagens_faltantes, carregar_registros
 from src.jeffrey_chat import SUGESTOES, JeffreyChat
 from src.jeffrey_llm import JeffreyLLM, estatisticas_score
 from src.persona import carregar_fatos
@@ -21,6 +21,7 @@ from src.ui_theme import (
     CAMINHO_LOGO, CABECALHO_CHAT, JS_RODAPE, html_intro_chat, JS_TEMA, html_rodape, construir_tema, html_destaque, carregar_css, html_metricas, html_secao,
 )
 
+baixar_imagens_faltantes()
 MODELOS = modelos_disponiveis()
 MODELO_PADRAO = list(MODELOS)[-1]  # fine-tuned, se existir
 

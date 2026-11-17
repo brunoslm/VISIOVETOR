@@ -25,6 +25,9 @@ DIR_MODELOS = DIR_RAIZ / "models"
 # Qualquer modelo da família CLIP/SigLIP do Hub funciona, ex.: "openai/clip-vit-base-patch32".
 MODELO_BASE = os.getenv("VISIOVETOR_BASE_MODEL", "google/siglip2-base-patch16-224")
 DIR_MODELO_AJUSTADO = DIR_MODELOS / "ptbr-finetuned"
+# Se a pasta acima não existir (ex.: num Space do Hugging Face), baixa o modelo ajustado deste repositório do Hub.
+# Vazio = só usa a pasta local.
+MODELO_AJUSTADO_HUB = os.getenv("VISIOVETOR_FT_MODEL", "")
 
 # ---------------------------------------------------------------------------
 # Dataset (Hugging Face) — Flickr8k com legendas traduzidas para português

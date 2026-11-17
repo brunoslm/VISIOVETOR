@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -11,8 +12,23 @@ from src.embeddings import CodificadorClip
 from src.vector_store import IndiceVetorial
 
 
+def baixar_modelo_ajustado() -> None:
+    """Sem a pasta local do modelo ajustado, baixa do Hub (VISIOVETOR_FT_MODEL) para o mesmo lugar."""
+    if (config.DIR_MODELO_AJUSTADO / "config.json").exists() or not config.MODELO_AJUSTADO_HUB:
+        return
+    from huggingface_hub import snapshot_download
+
+    print(f"⬇️  Baixando o modelo ajustado de {config.MODELO_AJUSTADO_HUB}...")
+    snapshot_download(config.MODELO_AJUSTADO_HUB, local_dir=config.DIR_MODELO_AJUSTADO)
+    # Os pesos baixados são os mesmos usados para gerar os índices publicados junto com o app.
+    # Sem isso, a data do download faria construir_indices achar o índice velho e recalcular tudo.
+    for pesos in config.DIR_MODELO_AJUSTADO.glob("*.safetensors"):
+        os.utime(pesos, (0, 0))
+
+
 def modelos_disponiveis() -> dict[str, str]:
     """Rótulo amigável -> caminho/ID do modelo."""
+    baixar_modelo_ajustado()
     modelos = {f"Base · {config.MODELO_BASE}": config.MODELO_BASE}
     if (config.DIR_MODELO_AJUSTADO / "config.json").exists():
         modelos[f"Ajustado em PT-BR · {config.DIR_MODELO_AJUSTADO.relative_to(config.DIR_RAIZ)}"] = str(config.DIR_MODELO_AJUSTADO)
@@ -35,6 +51,9 @@ def construir_indices(codificador: CodificadorClip, forcar: bool = False) -> tup
 
     if not forcar and IndiceVetorial.existe(prefixo_img) and IndiceVetorial.existe(prefixo_leg):
         imagens, legendas = IndiceVetorial.carregar(prefixo_img), IndiceVetorial.carregar(prefixo_leg)
+        # o índice guarda o caminho absoluto da máquina onde foi gerado: refaz a partir da pasta atual
+        for m in imagens.metadados:
+            m["path"] = str(config.DIR_BRUTOS / m["image"])
         # modelo local re-treinado depois do índice => índice velho
         pesos = list(Path(codificador.caminho_modelo).glob("*.safetensors")) if Path(codificador.caminho_modelo).is_dir() else []
         hora_indice = prefixo_img.with_suffix(".npy").stat().st_mtime

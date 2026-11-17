@@ -4,7 +4,9 @@
 
 Engine de busca vetorial multimodal em **Python** + **PyTorch** + **Hugging Face Transformers**, usando o **SigLIP 2 (`google/siglip2-base-patch16-224`)** para mapear imagens e textos em um espaço latente compartilhado de **768 dimensões**. O código funciona com qualquer modelo da família CLIP/SigLIP do Hub (ex.: `openai/clip-vit-base-patch32`), trocando `VISIOVETOR_BASE_MODEL`.
 
-O projeto inclui um **fine-tuning contrastivo** com legendas em **português** (Flickr8k PT-BR).
+O projeto inclui um **fine-tuning contrastivo** com legendas em **português** (Flickr8k PT-BR). O modelo ajustado está publicado no Hugging Face: [`brunoslm/visiovetor`](https://huggingface.co/brunoslm/visiovetor).
+
+![Demonstração: busca por "um cachorro pulando na praia" e comparação entre o modelo base e o ajustado](docs/demo.gif)
 
 Funcionalidades:
 
@@ -218,6 +220,7 @@ visiovetor/
 ├── config.py                  # Caminhos, modelo, dataset, device, tags
 ├── run.sh / run.bat           # Setup + dados + fine-tuning + índice + UI
 ├── app.py                     # Interface Gradio
+├── docs/demo.gif              # Demonstração do app (topo do README)
 ├── scripts/
 │   ├── prepare_data.py        # Baixa subconjunto do Flickr8k PT-BR (streaming)
 │   ├── finetune.py            # Fine-tuning contrastivo + avaliação antes/depois
@@ -275,6 +278,12 @@ python scripts/prepare_data.py            # ~500 MB, Flickr8k completo: 6000 tre
 python scripts/finetune.py                # ~25 min em CPU (6000 imagens)
 python scripts/build_index.py             # vetoriza o catálogo
 python app.py
+```
+
+Para pular o fine-tuning e usar o modelo já treinado, troque o `finetune.py` por esta variável antes do `build_index.py` e do `app.py`. O modelo é baixado do Hugging Face para `models/ptbr-finetuned` na primeira execução:
+
+```bash
+export VISIOVETOR_FT_MODEL=brunoslm/visiovetor
 ```
 
 ### Usando suas próprias imagens
