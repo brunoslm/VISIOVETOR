@@ -1,4 +1,6 @@
-# 🔍 VisioVetor — Engine de Busca Semântica Multimodal
+<img src="src/assets/logo.svg" alt="Logo do VisioVetor" width="72" height="72">
+
+# VisioVetor — Engine de Busca Semântica Multimodal
 
 Engine de busca vetorial multimodal em **Python** + **PyTorch** + **Hugging Face Transformers**, usando o **SigLIP 2 (`google/siglip2-base-patch16-224`)** para mapear imagens e textos em um espaço latente compartilhado de **768 dimensões**. O código funciona com qualquer modelo da família CLIP/SigLIP do Hub (ex.: `openai/clip-vit-base-patch32`), trocando `VISIOVETOR_BASE_MODEL`.
 

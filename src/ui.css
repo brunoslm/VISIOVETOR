@@ -55,9 +55,9 @@ footer:not(.vv-footer) { display: none !important; }
 .vv-brand-btn:focus-visible { outline: 2px solid #0ea5e9; outline-offset: 2px; }
 .vv-logo {
   display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px;
-  background: #0284c7; color: #fff; box-shadow: 0 1px 2px rgba(2, 132, 199, .3);
+  box-shadow: 0 1px 2px rgba(2, 132, 199, .3);
 }
-.dark .vv-logo { background: #0ea5e9; }
+.vv-logo svg { display: block; width: 100%; height: 100%; }
 .vv-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 500; color: var(--vv-muted); }
 .vv-hero h1 {
   margin: 12px 0 0; max-width: 28ch; font-size: 30px; line-height: 1.15; font-weight: 600;

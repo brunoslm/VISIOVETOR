@@ -18,7 +18,7 @@ from src.jeffrey_chat import SUGESTOES, JeffreyChat
 from src.jeffrey_llm import JeffreyLLM, estatisticas_score
 from src.persona import carregar_fatos
 from src.ui_theme import (
-    CABECALHO_CHAT, JS_RODAPE, html_intro_chat, JS_TEMA, html_rodape, construir_tema, html_destaque, carregar_css, html_metricas, html_secao,
+    CAMINHO_LOGO, CABECALHO_CHAT, JS_RODAPE, html_intro_chat, JS_TEMA, html_rodape, construir_tema, html_destaque, carregar_css, html_metricas, html_secao,
 )
 
 MODELOS = modelos_disponiveis()
@@ -373,4 +373,4 @@ def construir_interface() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    construir_interface().launch(theme=construir_tema(), css=carregar_css())
+    construir_interface().launch(theme=construir_tema(), css=carregar_css(), favicon_path=str(CAMINHO_LOGO))

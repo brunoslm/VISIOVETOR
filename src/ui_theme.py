@@ -8,6 +8,9 @@ from pathlib import Path
 import gradio as gr
 
 CAMINHO_CSS = Path(__file__).with_name("ui.css")
+CAMINHO_LOGO = Path(__file__).with_name("assets") / "logo.svg"
+# Logo: um "V" de dois vetores (imagem = quadrado, texto = círculo) e o ângulo do cosseno entre eles
+LOGO_SVG = CAMINHO_LOGO.read_text(encoding="utf-8").strip()
 
 # Paleta zinc + marca sky (Tailwind)
 Z = {50: "#fafafa", 100: "#f4f4f5", 200: "#e4e4e7", 300: "#d4d4d8", 400: "#a1a1aa", 500: "#71717a",
@@ -123,7 +126,6 @@ def carregar_css() -> str:
 # Ícones (estilo Lucide, stroke 2, currentColor)
 # ---------------------------------------------------------------------------
 _ICONES = {
-    "scan": '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/>',
     "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
     "moon": '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     "arrow-up": '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
@@ -160,7 +162,7 @@ def html_destaque(n_imagens: int, n_legendas: int, n_tags: int, dispositivo: str
     return f"""
 <header class="vv-hero">
   <div class="vv-topbar">
-    <button type="button" class="vv-brand vv-brand-btn" data-vv-top aria-label="VisioVetor: voltar ao topo" title="Voltar ao topo"><span class="vv-logo">{icone("scan")}</span>VisioVetor</button>
+    <button type="button" class="vv-brand vv-brand-btn" data-vv-top aria-label="VisioVetor: voltar ao topo" title="Voltar ao topo"><span class="vv-logo" aria-hidden="true">{LOGO_SVG}</span>VisioVetor</button>
     <div class="vv-theme" role="radiogroup" aria-label="Tema">{opcoes_tema}</div>
   </div>
   <p class="vv-eyebrow"><span class="vv-dot vv-sky"></span>Busca semântica multimodal</p>
@@ -327,7 +329,7 @@ def html_rodape(nome_modelo: str, dim: int, dispositivo: str, n_imagens: int) ->
 <footer class="vv-footer">
   <div class="vv-foot-grid">
     <div class="vv-foot-brand">
-      <button type="button" class="vv-brand vv-brand-btn" data-vv-top aria-label="VisioVetor: voltar ao topo" title="Voltar ao topo"><span class="vv-logo">{icone("scan")}</span>VisioVetor</button>
+      <button type="button" class="vv-brand vv-brand-btn" data-vv-top aria-label="VisioVetor: voltar ao topo" title="Voltar ao topo"><span class="vv-logo" aria-hidden="true">{LOGO_SVG}</span>VisioVetor</button>
       <p>Busca semântica multimodal em português: imagens e textos no mesmo espaço vetorial,
       comparados por similaridade de cosseno.</p>
       <p class="vv-foot-status"><span class="vv-dot vv-teal"></span>Rodando em {escape(dispositivo.upper())} ·
